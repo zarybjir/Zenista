@@ -14,8 +14,3 @@ další verze pak nejde nainstalovat přes starou (musíš odinstalovat a postup
 Pro aktualizace se zachováním dat nastav v Settings → Secrets and variables → Actions:
 `ZENISTA_KEYSTORE_B64`, `ZENISTA_KEYSTORE_PASSWORD`, `ZENISTA_KEY_ALIAS`, `ZENISTA_KEY_PASSWORD`
 (klidně stejný klíč jako u Stihnu to?).
-
-## Hokej '98
-
-Ve složce [`hokej/`](hokej/) je arkádový hokej ve stylu her z konce 90. let pro 1–2 hráče
-(gamepad i klávesnice) — návod na spuštění na Legion Go S / Steam Decku je v `hokej/README.md`.
