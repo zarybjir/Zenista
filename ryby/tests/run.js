@@ -123,6 +123,31 @@ test('materiály: led praskne dřív než dřevo a kámen', () => {
   ok(k > d, 'kámen má vydržet víc než dřevo: ' + k + ' / ' + d);
 });
 
+test('události: rozbití a body odpovídají skóre', () => {
+  const lvl = LEVELS[1], g = new Game(lvl), ev = [];
+  g.shoot(lvl.sol[0][0], lvl.sol[0][1]);
+  ok(g.ev.length === 1 && g.ev[0].k === 'shot', 'chybí událost výstřelu');
+  for (let n = 0; flying(g) && n < 3000; n++) { g.step(); ev.push(...g.ev); g.ev.length = 0; }
+  const k = t => ev.filter(e => e.k === t);
+  ok(k('hit').length > 0 && k('hit').every(e => e.i > 0 && isFinite(e.x) && isFinite(e.y) && e.m), 'nárazy');
+  ok(k('bear').length === 1 && k('win').length === 1 && k('win')[0].n === g.queue.length, 'medvěd a výhra');
+  let pts = 0;
+  for (const e of [...k('break'), ...k('bear')]) pts += e.pts;
+  ok(pts + g.queue.length * SCORE.fish === g.score, 'body v událostech ' + pts + ' neodpovídají skóre ' + g.score);
+  ok(k('break').every(e => MAT[e.m] && e.w > 0 && e.h > 0), 'událost rozbití nemá materiál a rozměr');
+});
+
+test('události: výstřel vedle nastaví miss a prohra se ohlásí', () => {
+  const lvl = LEVELS[0], g = new Game(lvl), ev = [];
+  g.shoot(170, 1);
+  while (flying(g)) g.step();
+  ok(g.miss && g.state === 'aim', 'miss po výstřelu vedle');
+  g.shoot(lvl.sol[0][0], lvl.sol[0][1]);
+  ok(!g.miss, 'miss se má výstřelem zrušit');
+  const h = play(lvl, lvl.fish.map(() => [170, 1]));
+  ok(h.ev.some(e => e.k === 'lost') && !h.ev.some(e => e.k === 'win'), 'prohra bez události');
+});
+
 // ---------- běh ----------
 const filter = process.argv[2];
 let fail = 0, n = 0;

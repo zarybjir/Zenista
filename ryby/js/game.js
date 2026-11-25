@@ -20,6 +20,9 @@ class Game {
     this.calm = 0;
     this.acc = 0;
     this.alpha = 1;                // poměr mezi dvěma kroky fyziky, pro vykreslení
+    this.miss = false;             // poslední výstřel nic nezasáhl
+    this.s0 = 0;                   // skóre před výstřelem
+    this.ev = [];                  // události pro efekty a zvuk; odebírá je app.js
   }
 
   // ---------- míření ----------
@@ -48,7 +51,9 @@ class Game {
     const p = this.pull, v = this.launchVel();
     if (Math.hypot(p.x, p.y) < SLING.min) { p.x = p.y = 0; return false; }
     this.fish = physFish(this.P, this.queue.shift(), SLING.x + p.x, SLING.y + p.y, v.x, v.y);
+    this.ev.push({ k: 'shot', x: p.x, y: p.y });
     p.x = p.y = 0;
+    this.miss = false; this.s0 = this.score;
     this.trail = [];
     this.t = 0; this.calm = 0;
     this.state = 'fly';
@@ -72,9 +77,15 @@ class Game {
   }
 
   step() {
-    for (const e of physStep(this.P)) {
-      if (e.kind === 'block') this.score += MAT[e.type].pts;
-      else if (e.kind === 'bear') { this.score += BEARS[e.type].pts; this.bears--; }
+    if (this.ev.length > 400) this.ev.length = 0; // nikdo je neodebírá (testy)
+    const rm = physStep(this.P);
+    for (const h of this.P.hits) this.ev.push(h);
+    for (const e of rm) {
+      if (e.kind === 'fish') continue;
+      const pts = e.kind === 'block' ? MAT[e.type].pts : BEARS[e.type].pts;
+      this.score += pts;
+      if (e.kind === 'bear') this.bears--;
+      this.ev.push({ k: e.kind === 'block' ? 'break' : 'bear', m: e.type, x: e.x, y: e.y, a: e.a, w: e.w || e.r * 2, h: e.h || e.r * 2, pts });
     }
     const f = this.fish;
     if (this.state === 'fly' || this.state === 'settle') {
@@ -89,16 +100,20 @@ class Game {
   }
 
   endShot() {
-    if (this.fish) physRemove(this.P, this.fish);
+    const f = this.fish;
+    if (f && !f.dead) { this.ev.push({ k: 'puff', x: f.x, y: f.y }); physRemove(this.P, f); }
     this.fish = null;
+    this.miss = this.score === this.s0;
     this.last = this.trail;
     this.trail = [];
     if (!this.bears) this.win();
-    else this.state = this.queue.length ? 'aim' : 'lost';
+    else if (this.queue.length) this.state = 'aim';
+    else { this.state = 'lost'; this.ev.push({ k: 'lost' }); }
   }
 
   win() {
     this.score += this.queue.length * SCORE.fish;
     this.state = 'won';
+    this.ev.push({ k: 'win', n: this.queue.length });
   }
 }

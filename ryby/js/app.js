@@ -17,6 +17,7 @@ const App = {
     this.start(0);
     Input.init(R.cv, {
       down: (px, py) => {
+        Sfx.unlock();
         const b = UI.hit(px, py), g = this.game;
         if (b) { this[b](); return null; }
         if (g.state === 'aim') {
@@ -30,7 +31,8 @@ const App = {
       aimVec: (x, y) => this.game.aimTo(SLING.x + x * SLING.max, SLING.y + y * SLING.max),
       release: () => this.game.release(),
       pan: d => R.pan(d, this.game),
-      fire: () => { const g = this.game; if (g.state === 'aim') g.release(); else if (g.state === 'won') this.next(); else g.ability(); },
+      zoom: f => R.zoom(f),
+      fire: () => { Sfx.unlock(); const g = this.game; if (g.state === 'aim') g.release(); else if (g.state === 'won') this.next(); else g.ability(); },
       restart: () => this.restart(),
       back: () => {},
     });
@@ -41,8 +43,11 @@ const App = {
     const dt = Math.min((t - this.last) / 1000 || 0, 0.1);
     this.last = t;
     Input.poll();
-    this.game.update(dt);
-    R.draw(this.game, dt);
+    const g = this.game;
+    g.update(dt);
+    for (const e of g.ev) { R.fx(e, g); Sfx.play(e); }
+    g.ev.length = 0;
+    R.draw(g, dt);
     UI.draw(R.ctx, this.game, R.W, R.H, this.hasNext());
     requestAnimationFrame(t => this.frame(t));
   },

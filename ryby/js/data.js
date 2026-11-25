@@ -51,4 +51,10 @@ const BEARS = {
 const SCORE = { fish: 10000 }; // za každou nevystřelenou rybu
 
 // pohled: výška scény v metrech, výška země nad spodním okrajem, levý okraj
-const VIEW = { h: 14, ground: 1.6, minX: -4 };
+const VIEW = { h: 14, ground: 1.6, minX: -4, zMin: 0.6, zMax: 1.6 };
+
+// efekty: nejvyšší počet částic, otřes kamery (metry na jednotku impulzu a strop), barvy úlomků
+const FX = {
+  max: 300, shake: 0.006, shakeMax: 0.22,
+  col: { led: ['#e6f7fd', '#bfe6f5', '#8cc9e3'], drevo: ['#d9a566', '#c8904f', '#8f5f2e'], kamen: ['#b9bec3', '#9aa0a6', '#6d7379'] },
+};

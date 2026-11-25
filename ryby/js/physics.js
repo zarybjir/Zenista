@@ -4,7 +4,7 @@
 // Zbytek hry čte jen pole entity, na engine nesahá.
 
 function physWorld(lvl) {
-  const P = { world: new planck.World({ gravity: { x: 0, y: PH.g } }), ents: [], kill: [], dmg: false };
+  const P = { world: new planck.World({ gravity: { x: 0, y: PH.g } }), ents: [], kill: [], hits: [], dmg: false };
   const gr = P.world.createBody();
   gr.createFixture({ shape: new planck.Box(100, 2, { x: 0, y: -2 }, 0), friction: 0.9 });
   P.world.on('post-solve', (c, imp) => physHit(P, c, imp));
@@ -61,6 +61,10 @@ function physHit(P, c, imp) {
   let i = 0;
   for (let k = 0; k < n; k++) i = Math.max(i, imp.normalImpulses[k]);
   if (i <= PH.thr) return;
+  // záznam nárazu pro efekty a zvuk (na fyziku nemá vliv)
+  const o = ea && ea.kind !== 'fish' ? ea : eb && eb.kind !== 'fish' ? eb : null, wm = c.getWorldManifold(null);
+  const p = wm && wm.points[0] || (ea || eb).body.getPosition();
+  P.hits.push({ k: 'hit', x: p.x, y: p.y, i, m: o ? o.type : 'zem' });
   physDamage(P, ea, eb, i - PH.thr);
   physDamage(P, eb, ea, i - PH.thr);
 }
@@ -82,6 +86,7 @@ function physSync(e) {
 // ---------- krok ----------
 // Vrací entity odstraněné v tomto kroku (rozbité nebo mimo scénu).
 function physStep(P) {
+  P.hits.length = 0;
   P.world.step(PH.dt, 8, 3);
   for (const e of P.ents) {
     physSync(e);

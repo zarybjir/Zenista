@@ -3,10 +3,13 @@
 // Kreslí se v CSS pixelech přes herní scénu. Tlačítka: { id, x, y, w, h, t }.
 const UI = {
   btns: [],
+  t0: 0, // čas konce úrovně; výsledek se ukáže se zpožděním, aby byl vidět poslední zásah
 
   layout(g, W, H, hasNext) {
     const b = this.btns = [{ id: 'restart', x: W - 60, y: 12, w: 48, h: 48, t: '↻' }];
-    if (g.state !== 'won' && g.state !== 'lost') return;
+    if (g.state !== 'won' && g.state !== 'lost') { this.t0 = 0; return; }
+    if (!this.t0) this.t0 = performance.now();
+    if (performance.now() - this.t0 < 900) return;
     const bw = 150, bh = 52, cy = H / 2 + 34, next = g.state === 'won' && hasNext;
     b.push({ id: 'restart', x: W / 2 - (next ? bw + 8 : bw / 2), y: cy, w: bw, h: bh, t: 'Znovu' });
     if (next) b.push({ id: 'next', x: W / 2 + 8, y: cy, w: bw, h: bh, t: 'Další' });
@@ -22,7 +25,7 @@ const UI = {
 
   draw(c, g, W, H, hasNext) {
     this.layout(g, W, H, hasNext);
-    const end = g.state === 'won' || g.state === 'lost';
+    const end = this.btns.length > 1;
     c.textBaseline = 'middle';
     c.font = '600 20px system-ui, sans-serif';
     c.fillStyle = '#1d3340';

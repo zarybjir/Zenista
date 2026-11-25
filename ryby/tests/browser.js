@@ -50,8 +50,14 @@ const ok = (c, msg) => { if (!c) throw new Error(msg); };
       await pg.screenshot({ path: path.join(OUT, name + '-2-mireni.png') });
       await rel();
       ok(await st() === 'fly', 'po puštění ryba neletí');
+      ok(await pg.evaluate('Sfx.ac && Sfx.ac.state') === 'running', 'zvuk se prvním dotykem neodemkl');
+      await pg.waitForFunction('R.snap > 0', null, { timeout: 2000 }); // prut po výstřelu kmitá
       await pg.waitForFunction('App.game.t > 50');
       await pg.screenshot({ path: path.join(OUT, name + '-3-let.png') });
+      // první náraz: částice a otřes
+      await pg.waitForFunction('App.game.score > 0 && R.parts.some(p => p.life > 0)', null, { timeout: 30000 });
+      ok(await pg.evaluate('R.parts.length') <= await pg.evaluate('FX.max'), 'příliš mnoho částic');
+      await pg.screenshot({ path: path.join(OUT, name + '-3b-naraz.png') });
       await pg.waitForFunction('["aim","won","lost"].includes(App.game.state)', null, { timeout: 30000 });
       await pg.waitForTimeout(300);
       await pg.screenshot({ path: path.join(OUT, name + '-4-po-vystrelu.png') });
@@ -63,7 +69,7 @@ const ok = (c, msg) => { if (!c) throw new Error(msg); };
       }
       const end = await st();
       ok(end === 'won' || end === 'lost', 'úroveň neskončila: ' + end);
-      await pg.waitForTimeout(100);
+      await pg.waitForFunction('UI.btns.length > 1', null, { timeout: 5000 }); // výsledek se ukáže se zpožděním
       await pg.screenshot({ path: path.join(OUT, name + '-5-vysledek.png') });
       const btn = id => pg.evaluate(`(() => { const b = UI.btns.filter(b => b.id === '${id}').pop(); return b && { x: b.x + b.w / 2, y: b.y + b.h / 2 }; })()`);
       if (end === 'won') {
@@ -76,6 +82,17 @@ const ok = (c, msg) => { if (!c) throw new Error(msg); };
       const b = await btn('restart');
       await pg.mouse.click(b.x, b.y);
       ok(await st() === 'aim' && await pg.evaluate('App.game.score') === 0, 'restart nevrátil úroveň na začátek');
+      // zoom kolečkem v mezích
+      const z0 = await pg.evaluate('R.z');
+      await pg.mouse.wheel(0, 100);
+      ok(await pg.evaluate('R.z') < z0, 'kolečko nezměnilo zoom');
+      for (let i = 0; i < 30; i++) await pg.mouse.wheel(0, 100);
+      ok(Math.abs(await pg.evaluate('R.z') - await pg.evaluate('VIEW.zMin')) < 1e-9, 'zoom mimo meze');
+      await pg.waitForTimeout(400);
+      await pg.screenshot({ path: path.join(OUT, name + '-7-oddaleno.png') });
+      for (let i = 0; i < 40; i++) await pg.mouse.wheel(0, -100);
+      ok(Math.abs(await pg.evaluate('R.z') - await pg.evaluate('VIEW.zMax')) < 1e-9, 'zoom mimo meze');
+      await pg.evaluate('R.zoom(1 / R.z)');
       await pg.keyboard.press('r');
       ok(await st() === 'aim', 'klávesa R');
       await pg.close();
