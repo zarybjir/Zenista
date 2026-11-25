@@ -11,9 +11,10 @@ const PH = {
   minX: -15, maxX: 45, minY: -5, // mimo tyto meze se tělesa odstraní
 };
 
-// prak (rybářský prut): x, y = špička prutu
+// prak (rybářský prut): x, y = špička prutu; y musí být nad max + poloměr ryby,
+// jinak by natažená ryba ležela na zemi a let by začal nárazem
 const SLING = {
-  x: 0, y: 1.8,
+  x: 0, y: 2.8,
   max: 2.2,   // největší natažení
   min: 0.35,  // kratší tah se nepočítá jako výstřel
   k: 8,       // rychlost výstřelu = natažení × k
@@ -38,20 +39,40 @@ const SHAPE = {
   blok:   [1.2, 0.6],
 };
 
-// ryby: poloměr, hustota, pružnost, násobek poškození podle materiálu
+// ryby: poloměr, hustota, pružnost, násobek poškození podle materiálu (bear = medvědi),
+// ab = čísla schopnosti (kód je ve fish.js), lx, ly = tvar těla při kreslení
 const FISH = {
-  pstruh: { r: 0.28, dens: 5.5, rest: 0.25, fric: 0.5, dmg: { led: 1.6, drevo: 1, kamen: 0.5, medved: 1.3 }, col: '#7fb069', belly: '#f2d9a0' },
+  pstruh:     { r: 0.28, dens: 5.5, rest: 0.25, fric: 0.5, dmg: { led: 1.6, drevo: 1, kamen: 0.5, bear: 1.3 },
+                lx: 1.35, ly: 0.9, col: '#7fb069', belly: '#f2d9a0', edge: '#2f4a2a' },
+  // rozdělí se na hejno tří; spread = rozevření ve stupních
+  sardinky:   { r: 0.19, dens: 6, rest: 0.2, fric: 0.5, dmg: { led: 2.2, drevo: 0.6, kamen: 0.3, bear: 1.3 },
+                ab: { spread: 11 }, lx: 1.5, ly: 0.7, col: '#8fa9c4', belly: '#e9eef3', edge: '#3a4d63' },
+  // prudce zrychlí v přímém směru
+  stika:      { r: 0.24, dens: 6.5, rest: 0.1, fric: 0.4, dmg: { led: 1, drevo: 2.4, kamen: 0.5, bear: 1 },
+                ab: { speed: 30 }, lx: 1.9, ly: 0.65, col: '#5d8a4a', belly: '#dfe6b0', edge: '#26401f' },
+  // nafoukne se a odhodí okolí: dosah, impulz a poškození uprostřed, nový poloměr a hustota
+  ctverzubec: { r: 0.24, dens: 4, rest: 0.3, fric: 0.5, dmg: { led: 1, drevo: 1, kamen: 1.6, bear: 1 },
+                ab: { rad: 2.6, imp: 9, dmg: 16, r: 0.5, dens: 1 }, lx: 1.1, ly: 1, col: '#e3b23c', belly: '#fbf1cf', edge: '#6b4e0e' },
+  // schopnost nemá, bourá vahou
+  sumec:      { r: 0.42, dens: 9, rest: 0.05, fric: 0.6, dmg: { led: 1, drevo: 1.2, kamen: 1.7, bear: 1 },
+                lx: 1.4, ly: 0.9, col: '#5b5f6b', belly: '#c9c4b8', edge: '#24262d' },
+  // výboj zasáhne medvědy v dosahu i přes překážku; na okraji dosahu má poloviční sílu
+  uhor:       { r: 0.24, dens: 5, rest: 0.2, fric: 0.4, dmg: { led: 0.8, drevo: 0.8, kamen: 0.4, bear: 1 },
+                ab: { rad: 4, dmg: 15 }, lx: 2.3, ly: 0.5, col: '#d9c23a', belly: '#f6efb5', edge: '#5e5210' },
 };
 
-// medvědi: poloměr, hustota, výdrž, body
+// medvědi: poloměr, hustota, výdrž, body; hat = přilba z kotlíku
 const BEARS = {
-  medved: { r: 0.55, dens: 1.4, rest: 0.2, fric: 0.6, hp: 9, pts: 5000, col: '#8a5a33' },
+  medvide: { r: 0.4,  dens: 1.2, rest: 0.25, fric: 0.6, hp: 4,  pts: 3000,  col: '#b07a48' },
+  medved:  { r: 0.55, dens: 1.4, rest: 0.2,  fric: 0.6, hp: 9,  pts: 5000,  col: '#8a5a33' },
+  kotlik:  { r: 0.55, dens: 1.6, rest: 0.2,  fric: 0.6, hp: 24, pts: 8000,  col: '#8a5a33', hat: true },
+  grizzly: { r: 0.85, dens: 1.8, rest: 0.1,  fric: 0.7, hp: 42, pts: 12000, col: '#5e3d24' },
 };
 
 const SCORE = { fish: 10000 }; // za každou nevystřelenou rybu
 
 // pohled: výška scény v metrech, výška země nad spodním okrajem, levý okraj
-const VIEW = { h: 14, ground: 1.6, minX: -4, zMin: 0.6, zMax: 1.6 };
+const VIEW = { h: 14, ground: 1.6, minX: -4.6, zMin: 0.6, zMax: 1.6 };
 
 // efekty: nejvyšší počet částic, otřes kamery (metry na jednotku impulzu a strop), barvy úlomků
 const FX = {

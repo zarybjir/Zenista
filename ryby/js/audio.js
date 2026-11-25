@@ -80,6 +80,12 @@ const Sfx = {
   },
 
   ev_bear() { this.tone(620, 140, 0.28, 0.5, 'triangle'); this.noise(1200, 300, 0.18, 0.4); this.tone(900, 1300, 0.08, 0.25, 'sine', 0.26); },
+  ev_ab(e) {
+    if (e.m === 'ctverzubec') { this.noise(900, 90, 0.4, 1, 'lowpass'); this.tone(160, 50, 0.35, 0.8); }
+    else if (e.m === 'uhor') { for (let i = 0; i < 4; i++) this.tone(1400 + Math.random() * 1800, 300, 0.07, 0.25, 'sawtooth', i * 0.04); this.noise(4000, 1500, 0.2, 0.3, 'highpass'); }
+    else if (e.m === 'stika') { this.noise(1200, 5000, 0.18, 0.5); this.tone(400, 1100, 0.15, 0.25, 'triangle'); }
+    else for (let i = 0; i < 3; i++) this.tone(900 + i * 250, 1200 + i * 250, 0.06, 0.25, 'sine', i * 0.04); // hejno
+  },
   ev_puff() { this.noise(900, 300, 0.12, 0.2); },
   ev_win() { [523, 659, 784, 1047].forEach((f, i) => this.tone(f, f, 0.22, 0.35, 'triangle', 0.25 + i * 0.11)); },
   ev_lost() { this.tone(330, 250, 0.3, 0.35, 'triangle', 0.2); this.tone(250, 165, 0.45, 0.35, 'triangle', 0.5); },

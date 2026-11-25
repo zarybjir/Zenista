@@ -69,7 +69,7 @@ const ok = (c, msg) => { if (!c) throw new Error(msg); };
       }
       const end = await st();
       ok(end === 'won' || end === 'lost', 'úroveň neskončila: ' + end);
-      await pg.waitForFunction('UI.btns.length > 1', null, { timeout: 5000 }); // výsledek se ukáže se zpožděním
+      await pg.waitForFunction('UI.btns.length > 2', null, { timeout: 5000 }); // výsledek se ukáže se zpožděním
       await pg.screenshot({ path: path.join(OUT, name + '-5-vysledek.png') });
       const btn = id => pg.evaluate(`(() => { const b = UI.btns.filter(b => b.id === '${id}').pop(); return b && { x: b.x + b.w / 2, y: b.y + b.h / 2 }; })()`);
       if (end === 'won') {
@@ -95,6 +95,43 @@ const ok = (c, msg) => { if (!c) throw new Error(msg); };
       await pg.evaluate('R.zoom(1 / R.z)');
       await pg.keyboard.press('r');
       ok(await st() === 'aim', 'klávesa R');
+
+      // uložený postup, výběr úrovně
+      if (end === 'won') {
+        const sv = JSON.parse(await pg.evaluate('localStorage.getItem(Save.KEY)'));
+        ok(sv && sv.lv['led-1'] && sv.lv['led-1'].s >= 1 && sv.lv['led-1'].b > 0, 'výhra se neuložila');
+        const m = await btn('menu');
+        await pg.mouse.click(m.x, m.y);
+        ok(await pg.evaluate('App.screen') === 'menu', 'tlačítko výběru úrovně');
+        await pg.waitForTimeout(100);
+        await pg.screenshot({ path: path.join(OUT, name + '-8-vyber.png') });
+        ok(await btn('lvl1') && !(await btn('lvl2')), 'odemčená má být jen první a druhá úroveň');
+        await pg.keyboard.press('ArrowLeft'); await pg.keyboard.press('ArrowRight'); await pg.keyboard.press('ArrowRight');
+        ok(await pg.evaluate('UI.sel') <= 1, 'výběr klávesami zašel na zamčenou úroveň');
+        const t = await btn('lvl0');
+        await pg.mouse.click(t.x, t.y);
+        ok(await pg.evaluate('App.screen') === 'play' && await pg.evaluate('App.li') === 0, 'dlaždice nespustila úroveň');
+        await pg.keyboard.press('Escape');
+        ok(await pg.evaluate('App.screen') === 'menu', 'Escape nevede do výběru');
+        await pg.reload();
+        await pg.waitForFunction('typeof App !== "undefined" && App.game');
+        ok(await pg.evaluate('App.screen') === 'menu' && await pg.evaluate('Save.get("led-1").s') >= 1, 'postup po novém načtení chybí');
+        await pg.evaluate('Save.open = () => true'); // další kontroly potřebují všechny úrovně
+      }
+
+      // schopnost klepnutím za letu, kreslení všech ryb a medvědů
+      for (const [id, a, p] of [['sardinky-1', 40, 0.8], ['stika-1', 40, 0.8], ['ctverzubec-1', 40, 0.8], ['uhor-1', 40, 0.8], ['grizzly-1', 40, 0.9]]) {
+        await pg.evaluate(`App.start(LEVELS.findIndex(l => l.id === '${id}'))`);
+        await pg.waitForFunction('Math.abs(R.cam.x - VIEW.minX) < 0.01');
+        if (id === 'grizzly-1') await pg.screenshot({ path: path.join(OUT, name + '-9-' + id + '.png') });
+        await (await shoot(a, p))();
+        await pg.waitForFunction('App.game.t > 25');
+        await pg.mouse.click(vp.width / 2, vp.height / 3);
+        const used = await pg.evaluate('App.game.fish && App.game.fish.used');
+        ok(id === 'grizzly-1' ? !used : used, id + ': schopnost klepnutím');
+        await pg.waitForTimeout(120);
+        await pg.screenshot({ path: path.join(OUT, name + '-9-' + id + '-schopnost.png') });
+      }
       await pg.close();
       console.log('ok   ' + name);
     }

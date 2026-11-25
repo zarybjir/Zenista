@@ -78,19 +78,20 @@ Složka `ryby/` je celá hra; Android obal ji jen zabalí. Soubory vznikají pos
 ještě neexistuje, založ ho podle tohoto rozdělení a nedávej jeho obsah jinam.
 
 - `ryby/index.html` – jeden canvas a načtení **klasických skriptů v pořadí**:
-  `lib/planck, util, data, levels, audio, input, physics, fish, game, render, ui, app`.
+  `lib/planck, util, data, levels, audio, input, physics, fish, game, save, render, ui, app`.
   Skripty nejsou moduly: všechno je globální (`'use strict'`, top-level `const`/`function`).
   Nový soubor = přidat `<script>` na správné místo.
 - `js/util.js` – `clamp`, `lerp`, `rand` se seedem, vektory, easing.
 - `js/data.js` – tabulky: `FISH` (typy ryb), `BEARS`, `MAT` (materiály: hustota, tření, pružnost,
   výdrž, body), `SLING` (síla a dosah praku), `SCORE`.
 - `js/levels.js` – úrovně jako prostá data: pořadí ryb, bloky (`materiál, tvar, x, y, úhel`),
-  medvědi, hranice bodů pro 2 a 3 hvězdy. Žádná logika.
+  medvědi, hranice bodů pro 2 a 3 hvězdy (`stars`), referenční řešení (`sol`). Žádná logika.
 - `js/physics.js` – obal nad enginem: vytvoření světa z úrovně, pevný krok, kontakty → poškození
   (podle impulzu nárazu a `MAT`), rozbití bloku, zjištění „svět se uklidnil“.
 - `js/fish.js` – chování ryb za letu a jejich schopnosti (jedna funkce na typ).
 - `js/game.js` – `class Game`: stav úrovně (`míření → let → doznívání → další ryba / výhra / prohra`),
   fronta ryb, bodování, hvězdy. Nezná canvas ani DOM, aby šla testovat v Node.
+- `js/save.js` – `Save`: uložený postup (hvězdy a nejlepší skóre podle id úrovně), odemykání úrovní.
 - `js/render.js` – kreslení na canvas: pozadí s paralaxou, bloky a trhliny, postavy, částice,
   stopa letu, kamera (posun a zoom za letící rybou, otřes).
 - `js/ui.js` – menu, výběr úrovně, HUD, obrazovka výsledku. `js/app.js` – hlavní smyčka a start.
@@ -98,6 +99,10 @@ ještě neexistuje, založ ho podle tohoto rozdělení a nedávej jeho obsah jin
   (`aimStart`, `aimMove`, `release`, `ability`, `restart`, `back`). Hra nerozlišuje zdroj vstupu.
 - `js/audio.js` – `Sfx` (WebAudio); zvuk se odemyká prvním dotykem.
 - `gfx/` – grafika, `sounds/` – zvuky, `tests/` – testy.
+- `tools/solve.js` – hledá řešení úrovně náhodným zkoušením a navrhne `sol` a `stars`:
+  `node ryby/tools/solve.js <id> [pokusů]` (asi minuta na úroveň). **Po každé změně úrovně, dat ryb,
+  materiálů nebo praku ho pusť znovu** – uložená řešení jsou citlivá i na malou změnu fyziky a test
+  „referenční řešení vyhraje“ jinak selže.
 - `app/` – Android obal (WebView). Dnes balí Ženistu; nová hra dostane vlastní modul nebo vlastní
   `applicationId`, aby se hry daly nainstalovat vedle sebe. Sestavení: `.github/workflows/build.yml`.
 
@@ -150,8 +155,8 @@ Android obal načítá hru ze stálého https originu (`WebViewAssetLoader`), ab
 - `python3 -m http.server 8080 -d ryby` a otevřít `http://127.0.0.1:8080/`.
 - **Po změně herní logiky, dat nebo úrovní spusť `node ryby/tests/run.js`** (bez prohlížeče, bez npm):
   - každá úroveň po načtení stojí (nic se samo nerozbije ani nespadne),
-  - každá úroveň jde projít – v `levels.js` je u ní uložené referenční řešení (úhly, síly a časy
-    schopností) a test ho přehraje,
+  - každá úroveň jde projít na 3 hvězdy – v `levels.js` je u ní uložené referenční řešení
+    (`[úhel, síla, krok schopnosti]` za výstřel) a test ho přehraje,
   - stejný vstup dá dvakrát stejné skóre (determinismus),
   - hranice hvězd jsou dosažitelné a seřazené, starší uložený postup se načte.
 - Po změně vykreslování, menu nebo vstupu spusť i `node ryby/tests/browser.js` (Playwright s Chromiem:

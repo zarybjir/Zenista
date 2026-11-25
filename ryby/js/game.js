@@ -14,6 +14,7 @@ class Game {
     this.pull = { x: 0, y: 0 };    // posun ryby od špičky prutu
     this.aiming = false;
     this.fish = null;              // letící ryba
+    this.extra = [];               // další ryby téhož výstřelu (hejno)
     this.trail = [];               // stopa právě letící ryby (x, y, x, y…)
     this.last = [];                // stopa předchozího výstřelu
     this.t = 0;                    // kroky od výstřelu
@@ -100,15 +101,22 @@ class Game {
   }
 
   endShot() {
-    const f = this.fish;
-    if (f && !f.dead) { this.ev.push({ k: 'puff', x: f.x, y: f.y }); physRemove(this.P, f); }
-    this.fish = null;
+    for (const f of [this.fish, ...this.extra])
+      if (f && !f.dead) { this.ev.push({ k: 'puff', x: f.x, y: f.y }); physRemove(this.P, f); }
+    this.fish = null; this.extra = [];
     this.miss = this.score === this.s0;
     this.last = this.trail;
     this.trail = [];
     if (!this.bears) this.win();
     else if (this.queue.length) this.state = 'aim';
     else { this.state = 'lost'; this.ev.push({ k: 'lost' }); }
+  }
+
+  // 0 = nedohráno, 1 = výhra, 2 a 3 podle hranic bodů v úrovni
+  stars() {
+    if (this.state !== 'won') return 0;
+    const s = this.lvl.stars;
+    return this.score >= s[1] ? 3 : this.score >= s[0] ? 2 : 1;
   }
 
   win() {

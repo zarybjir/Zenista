@@ -1,7 +1,7 @@
 'use strict';
 // ---------- vstup: dotyk, myš, klávesnice a gamepad → stejné události ----------
 // Obsluha h: down(px, py) → 'aim' | 'pan' | null, aimMove(px, py), pan(dpx), release(),
-//            aimStart(), aimVec(x, y), fire(), restart(), back(), zoom(násobek)
+//            aimStart(), aimVec(x, y), fire(), restart(), back(), zoom(násobek), nav(dx, dy)
 const Input = {
   h: null, mode: null, id: -1, lx: 0, padAim: false, prev: [],
   pts: new Map(), pd: 0, // prsty na displeji a jejich vzdálenost (zoom dvěma prsty)
@@ -42,6 +42,7 @@ const Input = {
       if (e.key === 'r' || e.key === 'R') h.restart();
       else if (e.key === 'Enter' || e.key === ' ') h.fire();
       else if (e.key === 'Escape') h.back();
+      else if (e.key.startsWith('Arrow')) h.nav((e.key === 'ArrowRight') - (e.key === 'ArrowLeft'), (e.key === 'ArrowDown') - (e.key === 'ArrowUp'));
     });
   },
 
@@ -58,6 +59,8 @@ const Input = {
     if (edge(0)) { this.padAim = false; h.fire(); }
     if (edge(3)) h.restart();
     if (edge(1)) h.back();
-    this.prev = [b(0), b(1), b(2), b(3)];
+    if (edge(12) || edge(13)) h.nav(0, edge(13) ? 1 : -1);
+    if (edge(14) || edge(15)) h.nav(edge(15) ? 1 : -1, 0);
+    for (let i = 0; i < 16; i++) this.prev[i] = b(i);
   },
 };

@@ -74,8 +74,8 @@ const R = {
       const x = lerp(e.px, e.x, al), y = lerp(e.py, e.y, al), a = lerp(e.pa, e.a, al);
       if (e.kind === 'block') this.block(c, e, x, y, a);
       else if (e.kind === 'bear') this.bear(c, e, x, y, a, g);
-      else if (e.hit) this.fish(c, e.type, x, y, a, 1, 0);
-      else this.fish(c, e.type, x, y, Math.atan2(e.vy, e.vx), 1 + Math.hypot(e.vx, e.vy) * 0.012, Math.sin(this.time * 38) * 0.5);
+      else if (e.hit) this.fish(c, e.type, x, y, a, 1, 0, e.r, e.used);
+      else this.fish(c, e.type, x, y, Math.atan2(e.vy, e.vx), 1 + Math.hypot(e.vx, e.vy) * 0.012, Math.sin(this.time * 38) * 0.5, e.r, e.used);
     }
     this.drawParts(c, dt);
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
@@ -107,7 +107,7 @@ const R = {
     const q = g.queue, onSling = g.state === 'aim';
     for (let i = onSling ? 1 : 0; i < q.length; i++) {
       const hop = Math.max(0, Math.sin(this.time * 5 + i * 1.7)) * 0.16;
-      this.fish(c, q[i], SLING.x - 1.1 - (i - (onSling ? 1 : 0)) * 0.8, FISH[q[i]].r * 0.8 + hop, 0, 1, 0);
+      this.fish(c, q[i], SLING.x - 1.2 - (i - (onSling ? 1 : 0)) * 0.85, FISH[q[i]].r * FISH[q[i]].ly + hop, 0, 1, 0);
     }
     c.strokeStyle = '#f4f4f4'; c.lineWidth = 0.04;
     if (!onSling) { c.beginPath(); c.moveTo(tx, ty); c.lineTo(tx - 0.05, ty - 0.5 + Math.abs(k)); c.stroke(); return; }
@@ -151,6 +151,12 @@ const R = {
     c.fillStyle = b.col; c.strokeStyle = '#3d2614'; c.lineWidth = 0.06;
     for (const sx of [-1, 1]) { c.beginPath(); c.arc(sx * r * 0.68, r * 0.68, r * 0.3, 0, 7); c.fill(); c.stroke(); }
     c.beginPath(); c.arc(0, 0, r, 0, 7); c.fill(); c.stroke();
+    if (b.hat) { // přilba z kotlíku
+      c.fillStyle = '#7d858c'; c.strokeStyle = '#3a4046';
+      c.beginPath(); c.arc(0, r * 0.38, r * 0.86, 0.12, Math.PI - 0.12); c.closePath(); c.fill(); c.stroke();
+      c.beginPath(); c.arc(0, r * 1.2, r * 0.2, 0, Math.PI); c.stroke();
+      c.strokeStyle = '#3d2614';
+    }
     c.fillStyle = '#e8cfa8'; c.beginPath(); c.ellipse(0, -r * 0.3, r * 0.45, r * 0.34, 0, 0, 7); c.fill();
     c.fillStyle = '#2a1a0e';
     c.beginPath(); c.ellipse(0, -r * 0.18, r * 0.16, r * 0.11, 0, 0, 7); c.fill();
@@ -159,7 +165,7 @@ const R = {
     if (laugh) { c.beginPath(); c.arc(0, -r * 0.36, r * 0.2, Math.PI, 0); c.stroke(); }          // úsměv
     else if (scared || hurt) { c.beginPath(); c.ellipse(0, -r * 0.45, r * 0.1, r * 0.13, 0, 0, 7); c.fill(); } // otevřená tlama
     for (const sx of [-1, 1]) {
-      const ex = sx * r * 0.36, ey = r * 0.22;
+      const ex = sx * r * 0.36, ey = r * (b.hat ? 0.12 : 0.22);
       if (laugh || blink && !scared) { c.beginPath(); c.arc(ex, ey - r * 0.06, r * 0.15, 0, Math.PI); c.stroke(); continue; }
       c.fillStyle = '#fff'; c.beginPath(); c.arc(ex, ey, r * (scared ? 0.25 : 0.2), 0, 7); c.fill();
       c.fillStyle = '#2a1a0e'; c.beginPath(); c.arc(ex, ey, r * (scared || hurt ? 0.06 : 0.1), 0, 7); c.fill();
@@ -167,19 +173,38 @@ const R = {
     c.restore();
   },
 
-  // st = protažení v letu, wag = výchylka ocasu (−1 až 1)
-  fish(c, type, x, y, a, st, wag) {
-    const f = FISH[type], r = f.r;
+  // st = protažení v letu, wag = výchylka ocasu (−1 až 1), r = poloměr (jinak z dat),
+  // one = jedna sardinka (po rozdělení); jinak se sardinky kreslí jako hejno tří
+  fish(c, type, x, y, a, st, wag, r, one) {
+    const f = FISH[type];
+    r = r || f.r;
     c.save(); c.translate(x, y); c.rotate(a);
     if (Math.cos(a) < 0) c.scale(1, -1); // břicho vždy dolů
-    c.scale(st, 1 / st);
-    c.fillStyle = f.col; c.strokeStyle = '#2f4a2a'; c.lineWidth = 0.05;
-    const ty = wag * r * 0.5;
-    c.beginPath(); c.moveTo(-r * 1.1, 0); c.lineTo(-r * 1.9, r * 0.7 + ty); c.lineTo(-r * 1.9, -r * 0.7 + ty); c.closePath(); c.fill(); c.stroke();
-    c.beginPath(); c.ellipse(0, 0, r * 1.35, r * 0.9, 0, 0, 7); c.fill(); c.stroke();
-    c.fillStyle = f.belly; c.beginPath(); c.ellipse(0, -r * 0.3, r * 1.05, r * 0.5, 0, Math.PI, 0); c.fill();
-    c.fillStyle = '#fff'; c.beginPath(); c.arc(r * 0.7, r * 0.25, r * 0.28, 0, 7); c.fill();
-    c.fillStyle = '#1c1c1c'; c.beginPath(); c.arc(r * 0.78, r * 0.25, r * 0.13, 0, 7); c.fill();
+    if (type === 'sardinky' && !one) {
+      this.body(c, f, r, -r * 1.1, r * 1.1, st, wag); this.body(c, f, r, -r * 1.3, -r * 1.1, st, -wag); this.body(c, f, r, r * 0.9, 0, st, wag);
+    } else this.body(c, f, r, 0, 0, r > f.r ? 1 : st, wag, r > f.r);
+    c.restore();
+  },
+
+  body(c, f, r, ox, oy, st, wag, big) {
+    c.save(); c.translate(ox, oy); c.scale(st, 1 / st);
+    const lx = big ? r : r * f.lx, ly = big ? r : r * f.ly, ty = wag * r * 0.5;
+    c.fillStyle = f.col; c.strokeStyle = f.edge; c.lineWidth = 0.05;
+    c.beginPath(); c.moveTo(-lx * 0.8, 0); c.lineTo(-lx - r * 0.55, ly * 0.8 + ty); c.lineTo(-lx - r * 0.55, -ly * 0.8 + ty); c.closePath(); c.fill(); c.stroke();
+    if (f === FISH.ctverzubec) { // ostny
+      c.beginPath();
+      for (let i = 0; i < 10; i++) { const a = i * 0.628 + 0.3, k = big ? 1.3 : 1.18; c.moveTo(Math.cos(a) * lx * 0.9, Math.sin(a) * ly * 0.9); c.lineTo(Math.cos(a) * lx * k, Math.sin(a) * ly * k); }
+      c.stroke();
+    }
+    c.beginPath(); c.ellipse(0, 0, lx, ly, 0, 0, 7); c.fill(); c.stroke();
+    c.fillStyle = f.belly; c.beginPath(); c.ellipse(0, -ly * 0.33, lx * 0.78, ly * 0.55, 0, Math.PI, 0); c.fill();
+    if (f === FISH.sumec) { // vousy
+      c.beginPath(); c.moveTo(lx * 0.8, -ly * 0.2); c.quadraticCurveTo(lx * 1.3, -ly * 0.2, lx * 1.4, -ly * 0.8);
+      c.moveTo(lx * 0.7, -ly * 0.35); c.quadraticCurveTo(lx * 1.1, -ly * 0.6, lx * 1.1, -ly * 1.1); c.stroke();
+    }
+    const er = Math.min(r * 0.28, ly * 0.42);
+    c.fillStyle = '#fff'; c.beginPath(); c.arc(lx * 0.55, ly * 0.28, er, 0, 7); c.fill();
+    c.fillStyle = '#1c1c1c'; c.beginPath(); c.arc(lx * 0.55 + er * 0.3, ly * 0.28, er * 0.5, 0, 7); c.fill();
     c.restore();
   },
 
@@ -223,9 +248,20 @@ const R = {
       this.puff(e.x, e.y, 14, e.w * 0.7, '#fff');
       this.text(e.x, e.y + 0.4, '+' + e.pts, 0.8, '#ffe27a');
     } else if (e.k === 'puff') this.puff(e.x, e.y, 6, 0.35, '#e8f4fa');
+    else if (e.k === 'ab') {
+      if (e.m === 'ctverzubec') { this.shake = FX.shakeMax; this.ring(e.x, e.y, e.r, '#fff3c4'); this.puff(e.x, e.y, 12, 0.6, '#fff'); }
+      else if (e.m === 'uhor') {
+        this.ring(e.x, e.y, e.r, '#fff27a');
+        for (let i = 0; i < e.to.length; i += 2) this.bolt(e.x, e.y, e.to[i], e.to[i + 1]);
+      } else this.puff(e.x, e.y, e.m === 'stika' ? 7 : 4, 0.3, '#fff');
+    }
     else if (e.k === 'win') // body za nevystřelené ryby nad frontou
-      for (let i = 0; i < e.n; i++) this.text(SLING.x - 1.1 - i * 0.8, 1, '+' + SCORE.fish, 0.5, '#ffe27a').wait = 0.3 + i * 0.25;
+      for (let i = 0; i < e.n; i++) this.text(SLING.x - 1.2 - i * 0.85, 1.1 + (i & 1) * 0.6, '+' + SCORE.fish, 0.5, '#ffe27a').wait = 0.3 + i * 0.25;
   },
+
+  // rozpínající se kruh (k = 3) a blesk (k = 4, cíl ve vx, vy)
+  ring(x, y, r, col) { this.part(3, x, y, 0, 0, 0.35, r, col); },
+  bolt(x, y, tx, ty) { this.part(4, x, y, tx, ty, 0.3, 0, '#fff27a'); },
 
   text(x, y, t, sz, col) { const p = this.part(2, x, y, 0, 1.3, 1.1, sz, col, t); p.a = 0; return p; },
 
@@ -235,6 +271,18 @@ const R = {
       if (p.wait > 0) { p.wait -= dt; continue; }
       p.life -= dt;
       const t = Math.max(0, p.life / p.max);
+      if (p.k >= 3) {
+        c.globalAlpha = t; c.strokeStyle = p.col; c.lineWidth = 0.1;
+        c.beginPath();
+        if (p.k === 3) c.arc(p.x, p.y, p.sz * (1 - t * t), 0, 7);
+        else { // lomená čára k cíli
+          c.moveTo(p.x, p.y);
+          for (let i = 1; i < 6; i++) c.lineTo(lerp(p.x, p.vx, i / 6) + (Math.random() - 0.5) * 0.5, lerp(p.y, p.vy, i / 6) + (Math.random() - 0.5) * 0.5);
+          c.lineTo(p.vx, p.vy);
+        }
+        c.stroke();
+        continue;
+      }
       p.x += p.vx * dt; p.y += p.vy * dt;
       if (p.k === 0) { p.vy += PH.g * dt; p.a += p.va * dt; if (p.y < p.sz / 2 && p.vy < 0) { p.y = p.sz / 2; p.vy *= -0.35; p.vx *= 0.6; p.va *= 0.5; } }
       else if (p.k === 1) { p.vx *= 1 - 3 * dt; p.vy *= 1 - 3 * dt; }

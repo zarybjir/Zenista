@@ -51,6 +51,26 @@ function physFish(P, type, x, y, vx, vy) {
   return e;
 }
 
+// změna velikosti tělesa (nafouknutí čtverzubce)
+function physGrow(e, r, dens) {
+  const d = FISH[e.type];
+  e.body.destroyFixture(e.body.getFixtureList());
+  e.body.createFixture({ shape: new planck.Circle(r), density: dens, friction: d.fric, restitution: d.rest });
+  e.r = r;
+}
+
+// tlaková vlna ze středu src: odhodí a poškodí vše v dosahu, síla klesá se vzdáleností
+function physBlast(P, src, rad, imp, dmg) {
+  for (const e of P.ents) {
+    if (e === src || e.dead) continue;
+    const dx = e.x - src.x, dy = e.y - src.y, d = Math.hypot(dx, dy);
+    if (d >= rad) continue;
+    const k = 1 - d / rad, n = d || 1;
+    e.body.applyLinearImpulse({ x: dx / n * imp * k, y: dy / n * imp * k }, e.body.getWorldCenter(), true);
+    physDamage(P, e, src, dmg * k);
+  }
+}
+
 // ---------- náraz → poškození ----------
 function physHit(P, c, imp) {
   const ea = c.getFixtureA().getBody().getUserData(), eb = c.getFixtureB().getBody().getUserData();
@@ -71,7 +91,7 @@ function physHit(P, c, imp) {
 
 function physDamage(P, e, by, d) {
   if (!e || e.dead || e.kind === 'fish') return;
-  if (by && by.kind === 'fish') d *= FISH[by.type].dmg[e.type] || 1;
+  if (by && by.kind === 'fish') d *= FISH[by.type].dmg[e.kind === 'bear' ? 'bear' : e.type] || 1;
   e.hp -= d;
   if (e.hp <= 0) { e.dead = true; P.kill.push(e); }
 }
