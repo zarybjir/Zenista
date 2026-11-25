@@ -85,7 +85,10 @@ ještě neexistuje, založ ho podle tohoto rozdělení a nedávej jeho obsah jin
 - `js/data.js` – tabulky: `FISH` (typy ryb), `BEARS`, `MAT` (materiály: hustota, tření, pružnost,
   výdrž, body), `SLING` (síla a dosah praku), `SCORE`.
 - `js/levels.js` – úrovně jako prostá data: pořadí ryb, bloky (`materiál, tvar, x, y, úhel`),
-  medvědi, hranice bodů pro 2 a 3 hvězdy (`stars`), referenční řešení (`sol`). Žádná logika.
+  medvědi, nepovinné skály (`rocks`, nehybné plošiny), šířka scény `w`, hranice bodů pro 2 a 3
+  hvězdy (`stars`), referenční řešení (`sol`). Žádná logika. `w` dej asi 2 m za poslední stavbu:
+  podle něj se nastaví přiblížení, aby byla vidět celá úroveň, a co se odkutálí dál, zmizí
+  (medvěd se počítá jako vyřazený).
 - `js/physics.js` – obal nad enginem: vytvoření světa z úrovně, pevný krok, kontakty → poškození
   (podle impulzu nárazu a `MAT`), rozbití bloku, zjištění „svět se uklidnil“.
 - `js/fish.js` – chování ryb za letu a jejich schopnosti (jedna funkce na typ).
@@ -104,10 +107,13 @@ ještě neexistuje, založ ho podle tohoto rozdělení a nedávej jeho obsah jin
   (`aimStart`, `aimMove`, `release`, `ability`, `restart`, `back`). Hra nerozlišuje zdroj vstupu.
 - `js/audio.js` – `Sfx` (WebAudio); zvuk se odemyká prvním dotykem.
 - `gfx/` – grafika, `sounds/` – zvuky, `tests/` – testy.
-- `tools/solve.js` – hledá řešení úrovně náhodným zkoušením a navrhne `sol` a `stars`:
-  `node ryby/tools/solve.js <id> [pokusů]` (asi minuta na úroveň). **Po každé změně úrovně, dat ryb,
-  materiálů nebo praku ho pusť znovu** – uložená řešení jsou citlivá i na malou změnu fyziky a test
-  „referenční řešení vyhraje“ jinak selže.
+- `tools/solve.js` – hledá řešení úrovně výstřel po výstřelu a navrhne `sol` a `stars`:
+  `node ryby/tools/solve.js <id> [pokusů na výstřel]` (výchozí 60, pro těžké úrovně 150–200;
+  jedna až několik minut na úroveň). **Po každé změně úrovně, dat ryb, materiálů nebo praku ho pusť
+  znovu** – uložená řešení jsou citlivá i na malou změnu fyziky a test „referenční řešení vyhraje“
+  jinak selže. Výpis zároveň ukazuje obtížnost: kolik ryb řešení potřebuje a kolik náhodných
+  prvních výstřelů úroveň rovnou vyhrálo. Úvodní úroveň nového prvku má jít vyhrát jednou až
+  dvěma rybami, pozdější mají potřebovat dvě až čtyři.
 - `app/` – Android obal (WebView). Dnes balí Ženistu; nová hra dostane vlastní modul nebo vlastní
   `applicationId`, aby se hry daly nainstalovat vedle sebe. Sestavení: `.github/workflows/build.yml`.
 

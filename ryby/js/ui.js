@@ -25,8 +25,10 @@ const UI = {
 
   // ---------- výběr úrovně ----------
   menu(c, W, H) {
-    const b = this.btns = [], n = LEVELS.length, T = Math.min(88, (H - 110) / 2 - 14), G = 14;
-    const cols = this.cols = clamp((W - 32 + G) / (T + G) | 0, 1, 5), rows = Math.ceil(n / cols);
+    const b = this.btns = [], n = LEVELS.length, G = 14;
+    let cols = 6, rows, T; // nejvíc sloupců, při kterých se dlaždice vejdou na šířku
+    do { rows = Math.ceil(n / cols); T = Math.min(88, (H - 110) / rows - G); } while ((T + G) * cols - G > W - 32 && --cols > 1);
+    this.cols = cols;
     const x0 = (W - cols * (T + G) + G) / 2, y0 = Math.max(84, (H - rows * (T + G) + G) / 2 + 24);
     c.fillStyle = 'rgba(20,35,45,.6)'; c.fillRect(0, 0, W, H);
     c.fillStyle = '#fff'; c.textAlign = 'center';

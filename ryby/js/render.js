@@ -55,6 +55,7 @@ const R = {
   toWorld(px, py) { return { x: px / this.s + this.cam.x, y: (this.H - py) / this.s - VIEW.ground }; },
   // začátek úrovně: ukázat stavbu a přejet k prutu
   reset(g) {
+    this.zoom(clamp(this.W / ((g.lvl.w - VIEW.minX) * this.H / VIEW.h), VIEW.zMin, 1) / this.z); // celá úroveň do obrazu
     this.cam.x = this.camMax(g); this.cam.tx = VIEW.minX; this.cam.st = '';
     this.shake = this.snap = 0;
     for (const p of this.parts) p.life = 0;
@@ -191,6 +192,7 @@ const R = {
     c.setTransform(s, 0, 0, -s, (kx - this.cam.x) * s, (this.H - VIEW.ground * this.s) * this.dpr + ky * s);
     c.lineJoin = c.lineCap = 'round';
     this.drawGround(c);
+    for (const r of g.lvl.rocks || []) this.rock(c, r);
     this.dots(c, g.last, 'rgba(255,255,255,.6)');
     this.dots(c, g.trail, 'rgba(255,255,255,.95)');
     this.sling(c, g);
@@ -214,6 +216,18 @@ const R = {
     c.restore();
   },
 
+  // skála: nehybná plošina s travnatým vrškem
+  rock(c, r) {
+    const x = r[0] - r[2] / 2, y = r[1] - r[3] / 2, w = r[2], h = r[3];
+    c.fillStyle = '#8c8478'; c.strokeStyle = '#4a443c'; c.lineWidth = 0.07;
+    c.fillRect(x, y, w, h); c.strokeRect(x, y, w, h);
+    c.fillStyle = '#a39b8e'; c.fillRect(x + 0.06, y + h - 0.3, w - 0.12, 0.12);
+    c.fillStyle = '#736b60';
+    for (let i = 0.4; i < w - 0.3; i += 0.9) c.fillRect(x + i, y + h * (0.25 + (i * 7 % 3) * 0.15), 0.35, 0.07);
+    c.fillStyle = '#62b04e'; c.strokeStyle = '#3f7d3a'; c.lineWidth = 0.05;
+    c.fillRect(x - 0.05, y + h - 0.14, w + 0.1, 0.2); c.strokeRect(x - 0.05, y + h - 0.14, w + 0.1, 0.2);
+  },
+
   dots(c, t, col) {
     c.fillStyle = col; c.strokeStyle = 'rgba(40,60,80,.45)'; c.lineWidth = 0.025;
     for (let i = 0; i < t.length; i += 2) { c.beginPath(); c.arc(t[i], t[i + 1], 0.07, 0, 7); c.fill(); c.stroke(); }
@@ -235,7 +249,7 @@ const R = {
     const q = g.queue, onSling = g.state === 'aim';
     for (let i = onSling ? 1 : 0, x = SLING.x - 0.3; i < q.length; i++) {
       const f = FISH[q[i]], hop = Math.max(0, Math.sin(this.time * 5 + i * 1.7)) * 0.16;
-      x -= f.r * f.lx + 0.05; // rozestup podle délky ryby
+      x -= f.r * f.lx + 0.14; // rozestup podle délky ryby
       this.fish(c, q[i], x, f.r * f.ly + 0.03 + hop, 0, 1, hop > 0.02 ? 1 : 0);
       x -= f.r * (f.lx + 0.62);
     }

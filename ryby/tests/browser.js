@@ -120,15 +120,15 @@ const ok = (c, msg) => { if (!c) throw new Error(msg); };
       }
 
       // schopnost klepnutím za letu, kreslení všech ryb a medvědů
-      for (const [id, a, p] of [['sardinky-1', 40, 0.8], ['stika-1', 40, 0.8], ['ctverzubec-1', 40, 0.8], ['uhor-1', 40, 0.8], ['grizzly-1', 40, 0.9]]) {
+      for (const [id, a, p] of [['sardinky-1', 40, 0.8], ['stika-1', 40, 0.8], ['ctverzubec-1', 40, 0.8], ['uhor-1', 40, 0.8], ['skala-1', 40, 0.9], ['most-1', 40, 0.9], ['grizzly-1', 40, 0.9]]) {
         await pg.evaluate(`App.start(LEVELS.findIndex(l => l.id === '${id}'))`);
         await pg.waitForFunction('Math.abs(R.cam.x - VIEW.minX) < 0.01');
-        if (id === 'grizzly-1') await pg.screenshot({ path: path.join(OUT, name + '-9-' + id + '.png') });
+        await pg.screenshot({ path: path.join(OUT, name + '-9-' + id + '.png') });
         await (await shoot(a, p))();
         await pg.waitForFunction('App.game.t > 25');
         await pg.mouse.click(vp.width / 2, vp.height / 3);
         const used = await pg.evaluate('App.game.fish && App.game.fish.used');
-        ok(id === 'grizzly-1' ? !used : used, id + ': schopnost klepnutím');
+        ok(!!used === await pg.evaluate('!!FISH[App.game.lvl.fish[0]].ab'), id + ': schopnost klepnutím');
         await pg.waitForTimeout(120);
         await pg.screenshot({ path: path.join(OUT, name + '-9-' + id + '-schopnost.png') });
       }

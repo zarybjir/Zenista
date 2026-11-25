@@ -20,7 +20,8 @@ Pro aktualizace se zachováním dat nastav v Settings → Secrets and variables 
 Druhá hra v repu, ve složce `ryby/`: fyzikální střílečka, ve které se z rybářského prutu vystřelují
 ryby na medvědy schované ve stavbách z ledu, dřeva a kamene. Kreslená vektorová grafika:
 ryby a medvědi s výrazy, bloky se třemi stupni poškození, pozadí s horami, lesem a řekou.
-Deset úrovní, hodnocení jednou až třemi hvězdami (body za rozbité bloky, medvědy a hlavně za
+Osmnáct úrovní prvního prostředí (řeka v lese) se stoupající obtížností, v některých skalní
+plošiny a kopce, přes které je potřeba střílet obloukem. Hodnocení jednou až třemi hvězdami (body za rozbité bloky, medvědy a hlavně za
 nevystřelené ryby), výběr úrovně a ukládání postupu v zařízení.
 
 Ryby: **pstruh** (bez schopnosti), **sardinky** (rozdělí se na hejno tří), **štika** (prudce zrychlí),

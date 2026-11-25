@@ -4,10 +4,12 @@
 // Zbytek hry čte jen pole entity, na engine nesahá.
 
 function physWorld(lvl) {
-  const P = { world: new planck.World({ gravity: { x: 0, y: PH.g } }), ents: [], kill: [], hits: [], dmg: false };
+  const P = { world: new planck.World({ gravity: { x: 0, y: PH.g } }), ents: [], kill: [], hits: [], dmg: false, maxX: lvl.w + PH.outX };
   const gr = P.world.createBody();
   gr.createFixture({ shape: new planck.Box(100, 2, { x: 0, y: -2 }, 0), friction: 0.9 });
   P.world.on('post-solve', (c, imp) => physHit(P, c, imp));
+  for (const r of lvl.rocks || []) // skály: nehybné plošiny [x, y, šířka, výška], x, y je střed
+    P.world.createBody().createFixture({ shape: new planck.Box(r[2] / 2, r[3] / 2, { x: r[0], y: r[1] }, 0), friction: 0.9 });
   for (const b of lvl.blocks) physBlock(P, b[0], b[1], b[2], b[3], b[4] || 0);
   for (const b of lvl.bears) physBear(P, b[0], b[1], b[2]);
   // uklidnění: stavba si sedne a usne, teprve pak se počítá poškození
@@ -40,7 +42,9 @@ function physBlock(P, mat, shape, x, y, a) {
 
 function physBear(P, type, x, y) {
   const b = BEARS[type];
-  return physAdd(P, { kind: 'bear', type, r: b.r, hp: b.hp, max: b.hp }, x, y, 0, new planck.Circle(b.r), b);
+  const e = physAdd(P, { kind: 'bear', type, r: b.r, hp: b.hp, max: b.hp }, x, y, 0, new planck.Circle(b.r), b);
+  e.body.setAngularDamping(PH.bearDamp); // ať se medvěd na rovině nekutálí donekonečna
+  return e;
 }
 
 function physFish(P, type, x, y, vx, vy) {
@@ -110,7 +114,7 @@ function physStep(P) {
   P.world.step(PH.dt, 8, 3);
   for (const e of P.ents) {
     physSync(e);
-    if (!e.dead && (e.x < PH.minX || e.x > PH.maxX || e.y < PH.minY)) { e.dead = true; e.out = true; P.kill.push(e); }
+    if (!e.dead && (e.x < PH.minX || e.x > P.maxX || e.y < PH.minY)) { e.dead = true; e.out = true; P.kill.push(e); }
   }
   if (!P.kill.length) return P.kill;
   const out = P.kill;

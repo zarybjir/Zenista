@@ -8,7 +8,8 @@ const PH = {
   thr: 2,                 // impulz nárazu, pod kterým se nic nepoškodí
   calmV: 0.15, calmN: 45, // svět je v klidu: rychlosti pod calmV po calmN kroků
   settle: 90,             // kroky uklidnění po načtení úrovně
-  minX: -15, maxX: 45, minY: -5, // mimo tyto meze se tělesa odstraní
+  bearDamp: 1.5,          // tlumení otáčení medvědů
+  minX: -15, minY: -5, outX: 1.5, // tělesa vlevo od minX, pod minY nebo dál než outX za pravým okrajem úrovně se odstraní
 };
 
 // prak (rybářský prut): x, y = špička prutu; y musí být nad max + poloměr ryby,
@@ -26,13 +27,14 @@ const SLING = {
 // materiály: hustota, tření, pružnost, výdrž, body za rozbití
 const MAT = {
   led:   { dens: 0.8, fric: 0.3, rest: 0.1,  hp: 5,  pts: 300, col: '#bfe6f5', edge: '#5d9fbd' },
-  drevo: { dens: 1.1, fric: 0.6, rest: 0.15, hp: 20, pts: 500, col: '#c8904f', edge: '#6f4420' },
-  kamen: { dens: 2.6, fric: 0.8, rest: 0.05, hp: 70, pts: 800, col: '#9aa0a6', edge: '#4b5157' },
+  drevo: { dens: 1.1, fric: 0.6, rest: 0.15, hp: 28, pts: 500, col: '#c8904f', edge: '#6f4420' },
+  kamen: { dens: 2.6, fric: 0.8, rest: 0.05, hp: 110, pts: 800, col: '#9aa0a6', edge: '#4b5157' },
 };
 
 // tvary bloků: šířka, výška
 const SHAPE = {
   sloup:  [0.3, 1.6],
+  spalek: [0.3, 0.8],
   tram:   [2.4, 0.3],
   deska:  [1.4, 0.3],
   kostka: [0.8, 0.8],
@@ -58,15 +60,15 @@ const FISH = {
                 lx: 1.4, ly: 0.9, col: '#5b5f6b', belly: '#c9c4b8', edge: '#24262d' },
   // výboj zasáhne medvědy v dosahu i přes překážku; na okraji dosahu má poloviční sílu
   uhor:       { r: 0.24, dens: 5, rest: 0.2, fric: 0.4, dmg: { led: 0.8, drevo: 0.8, kamen: 0.4, bear: 1 },
-                ab: { rad: 4, dmg: 15 }, lx: 2.3, ly: 0.5, col: '#d9c23a', belly: '#f6efb5', edge: '#5e5210' },
+                ab: { rad: 4, dmg: 18 }, lx: 2.3, ly: 0.5, col: '#d9c23a', belly: '#f6efb5', edge: '#5e5210' },
 };
 
 // medvědi: poloměr, hustota, výdrž, body; hat = přilba z kotlíku
 const BEARS = {
-  medvide: { r: 0.4,  dens: 1.2, rest: 0.25, fric: 0.6, hp: 4,  pts: 3000,  col: '#b07a48' },
-  medved:  { r: 0.55, dens: 1.4, rest: 0.2,  fric: 0.6, hp: 9,  pts: 5000,  col: '#8a5a33' },
-  kotlik:  { r: 0.55, dens: 1.6, rest: 0.2,  fric: 0.6, hp: 24, pts: 8000,  col: '#8a5a33', hat: true },
-  grizzly: { r: 0.85, dens: 1.8, rest: 0.1,  fric: 0.7, hp: 42, pts: 12000, col: '#5e3d24' },
+  medvide: { r: 0.4,  dens: 1.2, rest: 0.25, fric: 0.6, hp: 5,  pts: 3000,  col: '#b07a48' },
+  medved:  { r: 0.55, dens: 1.4, rest: 0.2,  fric: 0.6, hp: 12, pts: 5000,  col: '#8a5a33' },
+  kotlik:  { r: 0.55, dens: 1.6, rest: 0.2,  fric: 0.6, hp: 30, pts: 8000,  col: '#8a5a33', hat: true },
+  grizzly: { r: 0.85, dens: 1.8, rest: 0.1,  fric: 0.7, hp: 60, pts: 12000, col: '#5e3d24' },
 };
 
 const SCORE = { fish: 10000 }; // za každou nevystřelenou rybu
