@@ -4,7 +4,7 @@ const { load } = require('./lib.js');
 const G = load();
 const Game = G('Game'), LEVELS = G('LEVELS'), SLING = G('SLING'), MAT = G('MAT'), SHAPE = G('SHAPE'),
   FISH = G('FISH'), BEARS = G('BEARS'), SCORE = G('SCORE'), Save = G('Save'), ABILITY = G('ABILITY'),
-  localStorage = G('localStorage'), ATLAS = G('ATLAS');
+  localStorage = G('localStorage'), ATLAS = G('ATLAS'), PH = G('PH');
 
 const tests = [];
 const test = (name, fn) => tests.push([name, fn]);
@@ -161,6 +161,19 @@ test('prak: ryba při plném natažení nezačíná na zemi', () => {
   const g = new Game(LEVELS[0]);
   g.shoot(90, 1); g.step(); g.step();
   ok(g.state === 'fly' && !g.fish.hit, 'let začal nárazem');
+});
+
+test('ryba: po nárazu se nekutálí dlouho a výstřel brzy skončí', () => {
+  for (const k of Object.keys(FISH)) {
+    const g = new Game({ id: 't', name: 't', w: 60, stars: [1, 2], fish: [k, k], blocks: [], bears: [['medved', 55, 0.55]], sol: [] });
+    g.shoot(12, 1); // plochá rána po rovné zemi: nejdelší kutálení
+    let n = 0;
+    while (g.state === 'fly') { g.step(); n++; }
+    const hit = n;
+    while (g.state === 'settle') { g.step(); n++; }
+    ok(n - hit <= PH.fishT + PH.calmN + 2, k + ': po nárazu trvalo ' + (n - hit) + ' kroků');
+    ok(g.state === 'aim' && !g.P.ents.some(e => e.kind === 'fish'), k + ': ryba nezmizela');
+  }
 });
 
 // ---------- ryby a schopnosti ----------

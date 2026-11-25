@@ -18,6 +18,7 @@ class Game {
     this.trail = [];               // stopa právě letící ryby (x, y, x, y…)
     this.last = [];                // stopa předchozího výstřelu
     this.t = 0;                    // kroky od výstřelu
+    this.hitT = 0;                 // krok prvního nárazu
     this.calm = 0;
     this.acc = 0;
     this.alpha = 1;                // poměr mezi dvěma kroky fyziky, pro vykreslení
@@ -93,17 +94,25 @@ class Game {
       this.t++;
       if (this.state === 'fly') {
         if (this.t % 3 === 0 && !f.dead) this.trail.push(f.x, f.y);
-        if (f.hit || f.dead) this.state = 'settle';
-      }
+        if (f.hit || f.dead) { // první náraz: ryby se přestanou kutálet a brzy zmizí
+          this.state = 'settle'; this.hitT = this.t;
+          for (const e of [f, ...this.extra]) if (!e.dead) e.body.setAngularDamping(PH.fishDamp);
+        }
+      } else if (f && this.t - this.hitT >= PH.fishT) this.dropFish();
       this.calm = physCalm(this.P) ? this.calm + 1 : 0;
       if (this.state === 'settle' && this.calm >= PH.calmN || this.t >= SLING.maxT) this.endShot();
     } else if (this.state === 'aim' && !this.bears) this.win();
   }
 
-  endShot() {
+  // odstraní ryby právě doznívajícího výstřelu
+  dropFish() {
     for (const f of [this.fish, ...this.extra])
       if (f && !f.dead) { this.ev.push({ k: 'puff', x: f.x, y: f.y }); physRemove(this.P, f); }
     this.fish = null; this.extra = [];
+  }
+
+  endShot() {
+    this.dropFish();
     this.miss = this.score === this.s0;
     this.last = this.trail;
     this.trail = [];

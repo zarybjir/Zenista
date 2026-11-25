@@ -9,6 +9,7 @@ const PH = {
   calmV: 0.15, calmN: 45, // svět je v klidu: rychlosti pod calmV po calmN kroků
   settle: 90,             // kroky uklidnění po načtení úrovně
   bearDamp: 1.5,          // tlumení otáčení medvědů
+  fishDamp: 4, fishT: 150, // ryba po prvním nárazu: tlumení otáčení a kroky, než zmizí
   minX: -15, minY: -5, outX: 1.5, // tělesa vlevo od minX, pod minY nebo dál než outX za pravým okrajem úrovně se odstraní
 };
 
