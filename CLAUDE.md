@@ -114,8 +114,13 @@ ještě neexistuje, založ ho podle tohoto rozdělení a nedávej jeho obsah jin
   jinak selže. Výpis zároveň ukazuje obtížnost: kolik ryb řešení potřebuje a kolik náhodných
   prvních výstřelů úroveň rovnou vyhrálo. Úvodní úroveň nového prvku má jít vyhrát jednou až
   dvěma rybami, pozdější mají potřebovat dvě až čtyři.
-- `app/` – Android obal (WebView). Dnes balí Ženistu; nová hra dostane vlastní modul nebo vlastní
-  `applicationId`, aby se hry daly nainstalovat vedle sebe. Sestavení: `.github/workflows/build.yml`.
+- `rybyapp/` (v kořeni repa) – Android obal této hry: WebView na šířku přes celou obrazovku,
+  `applicationId` `cz.ryby.app`, takže jde nainstalovat vedle Ženisty (`app/`). Složku `ryby/`
+  si při sestavení zkopíruje do APK sám (úloha `syncGame`, bez `tests/` a `tools/`) – hra se nikam
+  ručně nekopíruje. Tlačítko Zpět volá `window.rybyBack()` z `app.js`.
+  APK obou her sestavuje `.github/workflows/build.yml` (artefakty `ryby-apk` a `zenista-apk`).
+  Android SDK v cloudovém prostředí není, sestavení se ověřuje jen přes GitHub Actions.
+- `tools/gen_icon.js` – z `gfx/icon.svg` (kreslí ho `gen_gfx.js`) vyrobí ikony aplikace.
 
 Souřadnice: x doprava, y **nahoru**, jednotky **metry** (ryba ≈ 0,5 m, medvěd ≈ 1,5 m). Engine je
 laděný na tělesa 0,1–10 m, proto se nepočítá v pixelech; na obrazovku převádí jen `render.js`.
@@ -189,7 +194,7 @@ Android obal načítá hru ze stálého https originu (`WebViewAssetLoader`), ab
 
 ## Vydání verze
 
-- Při vydání zvyš `versionCode` a `versionName` v Android modulu hry.
+- Při vydání zvyš `versionCode` a `versionName` v `rybyapp/build.gradle.kts`.
 - Commit ve stylu `1.2: krátký popis změn`.
 - Když přibude nebo se změní funkce viditelná pro hráče, uprav i `README.md` (je česky).
 

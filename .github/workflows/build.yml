@@ -68,8 +68,16 @@ jobs:
           name: zenista-apk
           path: app/build/outputs/apk/**/*.apk
 
+      # Druhá hra v repu (složka ryby/, Android modul rybyapp/).
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ryby-apk
+          path: rybyapp/build/outputs/apk/**/*.apk
+
       - name: Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: app/build/outputs/apk/**/*.apk
+          files: |
+            app/build/outputs/apk/**/*.apk
+            rybyapp/build/outputs/apk/**/*.apk

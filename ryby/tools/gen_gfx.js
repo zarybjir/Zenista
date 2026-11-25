@@ -211,4 +211,15 @@ fs.writeFileSync(path.join(ROOT, 'gfx/atlas.svg'),
   `<svg xmlns="http://www.w3.org/2000/svg" width="${n(W)}" height="${n(H)}" viewBox="0 0 ${n(W)} ${n(H)}">\n${body}</svg>\n`);
 fs.writeFileSync(path.join(ROOT, 'js/atlas.js'),
   `'use strict';\n// Generováno nástrojem tools/gen_gfx.js – neupravuj ručně.\n// Obrázek v gfx/atlas.svg: [x, y, šířka, výška, počátek x, počátek y] v centimetrech.\nconst ATLAS = {\n  w: ${n(W)}, h: ${n(H)},\n  s: {\n${Object.keys(out).sort().map(k => `    ${k}: [${out[k].join(', ')}],`).join('\n')}\n  },\n};\n`);
+// ikona aplikace: medvěd a pstruh na modrém podkladu (rastruje ji tools/gen_icon.js)
+const pick = name => sprites.find(s => s.name === name).svg;
+fs.writeFileSync(path.join(ROOT, 'gfx/icon.svg'),
+  `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6db9e6"/><stop offset="1" stop-color="#bfe4f3"/></linearGradient></defs>
+<rect width="512" height="512" rx="96" fill="url(#g)"/>
+<path d="M0,400 Q130,340 256,390 T512,380 V416 Q512,512 416,512 H96 Q0,512 0,416Z" fill="#62b04e"/>
+<g transform="translate(290 320) scale(2.6)">${pick('bear_medved_lek')}</g>
+<g transform="translate(190 140) rotate(-20) scale(2.3)">${pick('fish_pstruh_0')}</g>
+</svg>
+`);
 console.log(`${sprites.length} obrázků, atlas ${n(W)} × ${n(H)} cm`);

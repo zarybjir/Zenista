@@ -30,7 +30,10 @@ medvědy i za překážkou). Schopnost se spouští klepnutím za letu, před pr
 Medvědi: medvídě, medvěd, medvěd s přilbou z kotlíku a grizzly. Nárazy doprovází úlomky, otřes kamery, vyskakující body a zvuky;
 medvědi se lekají letící ryby a po výstřelu vedle se smějí.
 
-- Spuštění: `python3 -m http.server 8080 -d ryby` a otevřít `http://127.0.0.1:8080/`.
+- Android: modul `rybyapp/`, APK vzniká na GitHubu stejně jako u Ženisty (**Actions** → poslední běh →
+  **Artifacts** → `ryby-apk`). Aplikace se jmenuje Ryby na medvědy a instaluje se vedle Ženisty.
+  Pro podpis používá stejné secrets `ZENISTA_KEYSTORE_*`.
+- V prohlížeči: `python3 -m http.server 8080 -d ryby` a otevřít `http://127.0.0.1:8080/`.
 - Ovládání: tahem od prutu zamířit a napnout, puštěním vystřelit. Tah jinde posouvá pohled,
   kolečko myši nebo dva prsty mění přiblížení.
   Klávesa R nebo tlačítko vpravo nahoře úroveň spustí znovu, Escape nebo tlačítko se třemi čarami

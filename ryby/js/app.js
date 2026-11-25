@@ -89,4 +89,7 @@ const App = {
   },
 };
 
+// tlačítko Zpět v Android obalu: z úrovně do výběru; false = obal pošle aplikaci do pozadí
+window.rybyBack = () => { if (App.screen !== 'play') return false; App.menu(); return true; };
+
 App.init();
