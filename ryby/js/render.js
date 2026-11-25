@@ -1,6 +1,7 @@
 'use strict';
 // ---------- vykreslení ----------
-// Zatím jednoduché tvary; kreslená grafika přijde později (viz Pořadí prací v CLAUDE.md).
+// Postavy a bloky jsou v gfx/atlas.svg (popis v js/atlas.js, vyrábí tools/gen_gfx.js). Při startu
+// se atlas i pozadí předkreslí do offscreen canvasů, ve smyčce se už jen kopíruje (drawImage).
 const R = {
   cv: null, ctx: null, W: 0, H: 0, dpr: 1, s: 1, // s = CSS pixely na metr
   z: 1,                       // zoom
@@ -8,7 +9,8 @@ const R = {
   snap: 0, sx: 0, sy: 0,      // kmit prutu po výstřelu a směr posledního natažení
   parts: [], pi: 0,           // částice (recyklované objekty)
   cam: { x: VIEW.minX, tx: VIEW.minX, st: '' },
-  sky: null,
+  img: null, atl: null, ak: 0, // atlas: zdrojový obrázek, předkreslený canvas, pixely na centimetr
+  bg: null,                    // vrstvy pozadí { sky, far, mid, ground }
 
   init(cv) {
     this.cv = cv;
@@ -17,14 +19,34 @@ const R = {
     addEventListener('resize', () => this.resize());
   },
 
+  // načte atlas; hra se spouští až potom
+  load() {
+    return new Promise((ok, err) => {
+      const i = new Image();
+      i.onload = () => { this.img = i; this.raster(); ok(); };
+      i.onerror = () => err(new Error('gfx/atlas.svg'));
+      i.src = 'gfx/atlas.svg';
+    });
+  },
+
+  // předkreslí atlas v rozlišení podle displeje (znovu jen když je potřeba výrazně větší)
+  raster() {
+    if (!this.img) return;
+    const k = Math.min(this.H / VIEW.h * this.dpr * 1.3 / 100, 4096 / Math.max(ATLAS.w, ATLAS.h));
+    if (this.atl && k <= this.ak * 1.1) return;
+    const a = document.createElement('canvas');
+    a.width = Math.ceil(ATLAS.w * k); a.height = Math.ceil(ATLAS.h * k);
+    a.getContext('2d').drawImage(this.img, 0, 0, a.width, a.height);
+    this.atl = a; this.ak = a.width / ATLAS.w;
+  },
+
   resize() {
     this.dpr = Math.min(devicePixelRatio || 1, 2);
     this.W = this.cv.clientWidth; this.H = this.cv.clientHeight;
     this.cv.width = Math.round(this.W * this.dpr); this.cv.height = Math.round(this.H * this.dpr);
     this.s = this.H / VIEW.h * this.z;
-    const g = this.ctx.createLinearGradient(0, 0, 0, this.H);
-    g.addColorStop(0, '#8ecbe8'); g.addColorStop(1, '#e3f3f7');
-    this.sky = g;
+    this.raster();
+    this.buildBg();
   },
 
   // ---------- kamera ----------
@@ -49,6 +71,112 @@ const R = {
     c.x += (c.tx - c.x) * Math.min(1, dt * 5);
   },
 
+  // ---------- pozadí ----------
+  // Čtyři vrstvy: obloha (stojí), hory a mraky, les s řekou (posouvají se pomaleji než scéna)
+  // a země (posouvá se se scénou). Hory a les se opakují po šířce tile.
+  buildBg() {
+    const d = this.dpr, W = this.W, H = this.H, rnd = mulberry32(77), s0 = H / VIEW.h;
+    const mk = (w, h) => { const cv = document.createElement('canvas'); cv.width = Math.ceil(w * d); cv.height = Math.ceil(h * d); const c = cv.getContext('2d'); c.scale(d, d); return [cv, c]; };
+    const tile = Math.max(W, 900), bg = this.bg = { tile };
+    let cv, c;
+    // obloha
+    [cv, c] = mk(W, H); bg.sky = cv;
+    let g = c.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#6db9e6'); g.addColorStop(0.6, '#bfe4f3'); g.addColorStop(1, '#f3f6e4');
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    g = c.createRadialGradient(W * 0.8, H * 0.2, 0, W * 0.8, H * 0.2, H * 0.3);
+    g.addColorStop(0, 'rgba(255,250,210,.95)'); g.addColorStop(0.18, 'rgba(255,246,190,.9)'); g.addColorStop(0.2, 'rgba(255,244,190,.35)'); g.addColorStop(1, 'rgba(255,244,190,0)');
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    // hory a mraky: spodní okraj vrstvy = čára země
+    [cv, c] = mk(tile, H); bg.far = cv;
+    const ridge = (base, amp, col, edge, ph) => {
+      const y = x => H * (base - amp * (Math.sin(x / tile * 6.283 * 2 + ph) * 0.5 + Math.sin(x / tile * 6.283 * 5 + ph * 2) * 0.3 + Math.abs(Math.sin(x / tile * 6.283 * 4 + ph * 3)) * 0.5));
+      c.beginPath(); c.moveTo(0, H);
+      for (let x = 0; x <= tile; x += 6) c.lineTo(x, y(x));
+      c.lineTo(tile, H); c.closePath();
+      c.fillStyle = col; c.fill();
+      c.beginPath(); for (let x = 0; x <= tile; x += 6) c.lineTo(x, y(x));
+      c.strokeStyle = edge; c.lineWidth = 2; c.stroke();
+    };
+    ridge(0.7, 0.13, '#b4cde2', '#d6e6f1', 1);
+    ridge(0.8, 0.09, '#97b9cf', '#b9d2df', 4);
+    c.fillStyle = 'rgba(255,255,255,.9)';
+    for (let i = 0; i < 6; i++) { // mraky ze shluků kruhů
+      const cx = (i + rnd() * 0.7) * tile / 6, cy = H * (0.2 + rnd() * 0.22), r = H * (0.02 + rnd() * 0.02);
+      for (const o of [0, -tile, tile]) {
+        for (let k = 0; k < 5; k++) { c.beginPath(); c.arc(cx + o + (k - 2) * r * 1.1, cy - (k === 2 ? r * 0.6 : k % 2 ? r * 0.35 : 0), r * (k === 2 ? 1.25 : 1), 0, 7); c.fill(); }
+        c.beginPath(); c.ellipse(cx + o, cy + r * 0.55, r * 3, r * 0.6, 0, 0, 7); c.fill();
+      }
+    }
+    // les a řeka
+    [cv, c] = mk(tile, H); bg.mid = cv;
+    c.fillStyle = '#9ccf9a'; c.beginPath(); c.moveTo(0, H);
+    for (let x = 0; x <= tile; x += 8) c.lineTo(x, H * (0.84 - 0.04 * Math.sin(x / tile * 6.283 * 3 + 1) - 0.02 * Math.sin(x / tile * 6.283 * 7)));
+    c.lineTo(tile, H); c.fill();
+    const trees = [];
+    for (let i = 0; i < tile / 26; i++) trees.push([rnd() * tile, 0.1 + rnd() * 0.17, rnd()]);
+    trees.sort((a, b) => a[1] - b[1]); // menší (vzdálenější) dřív
+    for (const [x, hh, v] of trees) for (const o of [0, -tile, tile]) this.tree(c, x + o, H - s0 * 0.45, H * hh, v);
+    const ry = H - s0 * 0.55; // řeka těsně nad čarou země
+    c.fillStyle = '#5fa8d6'; c.fillRect(0, ry, tile, s0 * 0.6);
+    c.fillStyle = '#4c93c3'; c.fillRect(0, ry, tile, 3);
+    c.strokeStyle = 'rgba(255,255,255,.6)'; c.lineWidth = 2; c.lineCap = 'round';
+    for (let i = 0; i < tile / 40; i++) { const x = rnd() * tile, y = ry + 8 + rnd() * (s0 * 0.45 - 8), l = 10 + rnd() * 22; c.beginPath(); c.moveTo(x, y); c.lineTo(x + l, y); c.stroke(); }
+    // země: dlaždice GT metrů, od trávy po spodní okraj obrazu
+    const GT = 8, gh = VIEW.ground + 0.35, k = s0 * 1.3;
+    [cv, c] = mk(GT * k, gh * k); bg.ground = cv; bg.gt = GT; bg.gh = gh;
+    c.scale(k, k); // dál v metrech, y dolů, tráva začíná v y = 0.35
+    g = c.createLinearGradient(0, 0.35, 0, gh);
+    g.addColorStop(0, '#8a6442'); g.addColorStop(1, '#5c4029');
+    c.fillStyle = g; c.fillRect(0, 0.4, GT, gh);
+    for (let i = 0; i < 26; i++) { // kameny v hlíně
+      const x = rnd() * GT, y = 0.75 + rnd() * (gh - 0.9), r = 0.05 + rnd() * 0.1;
+      c.fillStyle = rnd() < 0.5 ? '#a08a72' : '#74593f';
+      for (const o of [0, -GT, GT]) { c.beginPath(); c.ellipse(x + o, y, r * 1.4, r, 0, 0, 7); c.fill(); }
+    }
+    c.fillStyle = '#3f7d3a'; c.fillRect(0, 0.33, GT, 0.32); // tmavý lem trávy
+    c.beginPath(); c.moveTo(0, 0.58);
+    for (let i = 0; i <= 32; i++) c.quadraticCurveTo((i - 0.5) * GT / 32, 0.74, i * GT / 32, 0.6); // vlnitý spodní okraj
+    c.lineTo(GT, 0.35); c.lineTo(0, 0.35); c.fillStyle = '#62b04e'; c.fill();
+    c.fillStyle = '#86cf63'; c.fillRect(0, 0.35, GT, 0.07);
+    c.strokeStyle = '#3f7d3a'; c.lineWidth = 0.035; c.lineCap = 'round';
+    for (let i = 0; i < 40; i++) { // stébla nad čarou země
+      const x = rnd() * GT, h = 0.1 + rnd() * 0.2, l = (rnd() - 0.5) * 0.16;
+      c.strokeStyle = rnd() < 0.5 ? '#4f9a42' : '#6bbb55';
+      for (const o of [0, -GT, GT]) { c.beginPath(); c.moveTo(x + o, 0.38); c.quadraticCurveTo(x + o, 0.38 - h * 0.6, x + o + l, 0.38 - h); c.stroke(); }
+    }
+  },
+
+  // jehličnan ze tří pater; v = odstín
+  tree(c, x, y, h, v) {
+    const w = h * 0.42;
+    c.fillStyle = '#6b4a2b'; c.fillRect(x - w * 0.08, y - h * 0.15, w * 0.16, h * 0.15);
+    for (let i = 0; i < 3; i++) {
+      const b = y - h * (0.1 + i * 0.26), t = b - h * 0.42, hw = w * (0.5 - i * 0.11);
+      c.fillStyle = v < 0.5 ? '#3f8a55' : '#4a9960';
+      c.beginPath(); c.moveTo(x - hw, b); c.lineTo(x, t); c.lineTo(x + hw, b); c.closePath(); c.fill();
+      c.fillStyle = 'rgba(20,60,40,.25)';
+      c.beginPath(); c.moveTo(x, b); c.lineTo(x, t); c.lineTo(x + hw, b); c.closePath(); c.fill();
+    }
+  },
+
+  drawBg(c) {
+    const b = this.bg, gy = this.H - VIEW.ground * this.s; // čára země na obrazovce
+    c.drawImage(b.sky, 0, 0, this.W, this.H);
+    for (const [img, par] of [[b.far, 0.12], [b.mid, 0.4]]) {
+      let x = -((this.cam.x - VIEW.minX) * this.s * par) % b.tile;
+      if (x > 0) x -= b.tile;
+      for (; x < this.W; x += b.tile) c.drawImage(img, x, gy - this.H, b.tile, this.H);
+    }
+  },
+
+  drawGround(c) { // ve světových souřadnicích (y nahoru), proto obrácení
+    const b = this.bg, x1 = this.cam.x + this.viewW() + 1;
+    c.save(); c.scale(1, -1);
+    for (let x = Math.floor((this.cam.x - 1) / b.gt) * b.gt; x < x1; x += b.gt) c.drawImage(b.ground, x, -0.35, b.gt + 0.06, b.gh); // přesah zakryje šev
+    c.restore();
+  },
+
   // ---------- snímek ----------
   draw(g, dt) {
     const c = this.ctx, s = this.s * this.dpr;
@@ -58,58 +186,60 @@ const R = {
     this.snap = Math.max(0, this.snap - dt * 2.2);
     const kx = (Math.random() - 0.5) * 2 * this.shake, ky = (Math.random() - 0.5) * 2 * this.shake;
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    c.fillStyle = this.sky;
-    c.fillRect(0, 0, this.W, this.H);
-    this.hills(c);
+    this.drawBg(c);
     // dál se kreslí v metrech, y nahoru
     c.setTransform(s, 0, 0, -s, (kx - this.cam.x) * s, (this.H - VIEW.ground * this.s) * this.dpr + ky * s);
     c.lineJoin = c.lineCap = 'round';
-    c.fillStyle = '#6fae5a'; c.fillRect(this.cam.x - 1, -0.35, this.viewW() + 2, 0.35);
-    c.fillStyle = '#7a5a3c'; c.fillRect(this.cam.x - 1, -VIEW.ground - 1, this.viewW() + 2, VIEW.ground + 0.65);
-    this.dots(c, g.last, 'rgba(255,255,255,.55)');
-    this.dots(c, g.trail, 'rgba(255,255,255,.9)');
+    this.drawGround(c);
+    this.dots(c, g.last, 'rgba(255,255,255,.6)');
+    this.dots(c, g.trail, 'rgba(255,255,255,.95)');
     this.sling(c, g);
     const al = g.alpha;
     for (const e of g.P.ents) {
       const x = lerp(e.px, e.x, al), y = lerp(e.py, e.y, al), a = lerp(e.pa, e.a, al);
       if (e.kind === 'block') this.block(c, e, x, y, a);
       else if (e.kind === 'bear') this.bear(c, e, x, y, a, g);
-      else if (e.hit) this.fish(c, e.type, x, y, a, 1, 0, e.r, e.used);
-      else this.fish(c, e.type, x, y, Math.atan2(e.vy, e.vx), 1 + Math.hypot(e.vx, e.vy) * 0.012, Math.sin(this.time * 38) * 0.5, e.r, e.used);
+      else if (e.hit) this.fish(c, e.type, x, y, a, 1, 0, e.r > FISH[e.type].r, e.used);
+      else this.fish(c, e.type, x, y, Math.atan2(e.vy, e.vx), 1 + Math.hypot(e.vx, e.vy) * 0.012, this.time * 16 & 1, e.r > FISH[e.type].r, e.used);
     }
     this.drawParts(c, dt);
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
   },
 
-  hills(c) {
-    const y = this.H - VIEW.ground * this.s, o = -this.cam.x * this.s * 0.3;
-    c.fillStyle = '#a9d3b0';
-    for (let i = -1; i < 6; i++) {
-      c.beginPath();
-      c.ellipse(o + i * this.H * 0.9, y, this.H * 0.6, this.H * (0.16 + (i & 1) * 0.07), 0, Math.PI, 0);
-      c.fill();
-    }
+  // obrázek z atlasu: střed v x, y, natočení a, měřítko kx, ky (záporné ky = převrácení)
+  spr(c, name, x, y, a, kx, ky) {
+    const q = ATLAS.s[name], k = this.ak;
+    c.save(); c.translate(x, y); c.rotate(a); c.scale(kx / 100, -ky / 100);
+    c.drawImage(this.atl, q[0] * k, q[1] * k, q[2] * k, q[3] * k, -q[4], -q[5], q[2], q[3]);
+    c.restore();
   },
 
   dots(c, t, col) {
-    c.fillStyle = col;
-    for (let i = 0; i < t.length; i += 2) { c.beginPath(); c.arc(t[i], t[i + 1], 0.07, 0, 7); c.fill(); }
+    c.fillStyle = col; c.strokeStyle = 'rgba(40,60,80,.45)'; c.lineWidth = 0.025;
+    for (let i = 0; i < t.length; i += 2) { c.beginPath(); c.arc(t[i], t[i + 1], 0.07, 0, 7); c.fill(); c.stroke(); }
   },
 
   sling(c, g) {
-    // prut
-    c.strokeStyle = '#5a3d22'; c.lineWidth = 0.14;
-    // špička se ohýbá za rybou, po výstřelu kmitá
-    const k = Math.sin(this.snap * 26) * this.snap * 0.3;
+    // prut: špička se ohýbá za rybou, po výstřelu kmitá
+    const k = Math.sin(this.snap * 26) * this.snap * 0.3, bx = SLING.x + 0.9;
     const tx = SLING.x + g.pull.x * 0.14 + this.sx * k, ty = SLING.y + g.pull.y * 0.14 + this.sy * k;
-    c.beginPath(); c.moveTo(SLING.x + 0.9, 0); c.quadraticCurveTo(SLING.x + 0.7, SLING.y * 0.8, tx, ty); c.stroke();
+    const rod = () => { c.beginPath(); c.moveTo(bx, -0.05); c.quadraticCurveTo(bx - 0.15, SLING.y * 0.8, tx, ty); c.stroke(); };
+    c.strokeStyle = '#3a2415'; c.lineWidth = 0.2; rod();
+    c.strokeStyle = '#a8713c'; c.lineWidth = 0.11; rod();
+    c.strokeStyle = '#3a2415'; c.lineWidth = 0.3; c.beginPath(); c.moveTo(bx, -0.05); c.lineTo(bx - 0.03, 0.75); c.stroke(); // rukojeť
+    c.strokeStyle = '#d9b98a'; c.lineWidth = 0.2; c.beginPath(); c.moveTo(bx, 0); c.lineTo(bx - 0.03, 0.7); c.stroke();
+    c.fillStyle = '#8d969e'; c.strokeStyle = '#33393f'; c.lineWidth = 0.05; // naviják
+    c.beginPath(); c.arc(bx - 0.22, 0.95, 0.17, 0, 7); c.fill(); c.stroke();
+    c.beginPath(); c.arc(bx - 0.22, 0.95, 0.05, 0, 7); c.stroke();
     // ryby čekající ve frontě poskakují
     const q = g.queue, onSling = g.state === 'aim';
-    for (let i = onSling ? 1 : 0; i < q.length; i++) {
-      const hop = Math.max(0, Math.sin(this.time * 5 + i * 1.7)) * 0.16;
-      this.fish(c, q[i], SLING.x - 1.2 - (i - (onSling ? 1 : 0)) * 0.85, FISH[q[i]].r * FISH[q[i]].ly + hop, 0, 1, 0);
+    for (let i = onSling ? 1 : 0, x = SLING.x - 0.3; i < q.length; i++) {
+      const f = FISH[q[i]], hop = Math.max(0, Math.sin(this.time * 5 + i * 1.7)) * 0.16;
+      x -= f.r * f.lx + 0.05; // rozestup podle délky ryby
+      this.fish(c, q[i], x, f.r * f.ly + 0.03 + hop, 0, 1, hop > 0.02 ? 1 : 0);
+      x -= f.r * (f.lx + 0.62);
     }
-    c.strokeStyle = '#f4f4f4'; c.lineWidth = 0.04;
+    c.strokeStyle = '#f4f4f4'; c.lineWidth = 0.035;
     if (!onSling) { c.beginPath(); c.moveTo(tx, ty); c.lineTo(tx - 0.05, ty - 0.5 + Math.abs(k)); c.stroke(); return; }
     const fx = SLING.x + g.pull.x, fy = SLING.y + g.pull.y;
     c.beginPath(); c.moveTo(tx, ty); c.lineTo(fx, fy); c.stroke();
@@ -121,91 +251,36 @@ const R = {
         c.beginPath(); c.arc(fx + v.x * t, fy + v.y * t + PH.g * t * t / 2, 0.09 - i * 0.008, 0, 7); c.fill();
       }
     }
-    this.fish(c, q[0], fx, fy, on ? Math.atan2(v.y, v.x) : 0, 1, g.aiming ? Math.sin(this.time * 20) * 0.3 : 0);
+    this.fish(c, q[0], fx, fy, on ? Math.atan2(v.y, v.x) : 0, 1, g.aiming ? this.time * 12 & 1 : this.time * 2.5 & 1);
   },
 
   block(c, e, x, y, a) {
-    const m = MAT[e.type], w = e.w / 2, h = e.h / 2;
-    c.save(); c.translate(x, y); c.rotate(a);
-    c.fillStyle = m.col; c.strokeStyle = m.edge; c.lineWidth = 0.06;
-    c.fillRect(-w, -h, e.w, e.h); c.strokeRect(-w, -h, e.w, e.h);
-    const d = e.hp / e.max; // 3 stavy poškození
-    if (d < 0.67) {
-      c.lineWidth = 0.035;
-      c.beginPath();
-      c.moveTo(-w * 0.6, h); c.lineTo(-w * 0.1, h * 0.1); c.lineTo(-w * 0.5, -h);
-      if (d < 0.34) { c.moveTo(w, h * 0.5); c.lineTo(w * 0.3, -h * 0.1); c.lineTo(w * 0.6, -h); c.moveTo(-w * 0.1, h * 0.1); c.lineTo(w * 0.3, -h * 0.1); }
-      c.stroke();
-    }
-    c.restore();
+    const d = e.hp / e.max, st = d < 0.34 ? 2 : d < 0.67 ? 1 : 0; // 3 stavy poškození
+    if (e._st !== st) { e._st = st; e._n = 'blk_' + e.type + '_' + e.shape + '_' + st; }
+    this.spr(c, e._n, x, y, a, 1, 1);
   },
 
-  // výrazy: klid, mrknutí, leknutí (ryba letí blízko), zásah, smích po výstřelu vedle
+  // výrazy: zásah (krátce po nárazu), leknutí (ryba letí blízko), smích po výstřelu vedle, mrknutí, klid
   bear(c, e, x, y, a, g) {
-    const b = BEARS[e.type], r = e.r, f = g.fish;
-    const laugh = g.miss && g.state === 'aim' && !g.aiming;
-    const scared = !!f && !f.dead && Math.hypot(f.x - x, f.y - y) < 6;
-    const blink = (this.time + e.x * 1.3) % 3.4 < 0.12;
-    if (laugh) y += Math.abs(Math.sin(this.time * 9)) * 0.08;
-    c.save(); c.translate(x, y); c.rotate(a);
-    c.fillStyle = b.col; c.strokeStyle = '#3d2614'; c.lineWidth = 0.06;
-    for (const sx of [-1, 1]) { c.beginPath(); c.arc(sx * r * 0.68, r * 0.68, r * 0.3, 0, 7); c.fill(); c.stroke(); }
-    c.beginPath(); c.arc(0, 0, r, 0, 7); c.fill(); c.stroke();
-    if (b.hat) { // přilba z kotlíku
-      c.fillStyle = '#7d858c'; c.strokeStyle = '#3a4046';
-      c.beginPath(); c.arc(0, r * 0.38, r * 0.86, 0.12, Math.PI - 0.12); c.closePath(); c.fill(); c.stroke();
-      c.beginPath(); c.arc(0, r * 1.2, r * 0.2, 0, Math.PI); c.stroke();
-      c.strokeStyle = '#3d2614';
-    }
-    c.fillStyle = '#e8cfa8'; c.beginPath(); c.ellipse(0, -r * 0.3, r * 0.45, r * 0.34, 0, 0, 7); c.fill();
-    c.fillStyle = '#2a1a0e';
-    c.beginPath(); c.ellipse(0, -r * 0.18, r * 0.16, r * 0.11, 0, 0, 7); c.fill();
-    const hurt = e.hp < e.max;
-    c.strokeStyle = '#2a1a0e'; c.lineWidth = 0.045;
-    if (laugh) { c.beginPath(); c.arc(0, -r * 0.36, r * 0.2, Math.PI, 0); c.stroke(); }          // úsměv
-    else if (scared || hurt) { c.beginPath(); c.ellipse(0, -r * 0.45, r * 0.1, r * 0.13, 0, 0, 7); c.fill(); } // otevřená tlama
-    for (const sx of [-1, 1]) {
-      const ex = sx * r * 0.36, ey = r * (b.hat ? 0.12 : 0.22);
-      if (laugh || blink && !scared) { c.beginPath(); c.arc(ex, ey - r * 0.06, r * 0.15, 0, Math.PI); c.stroke(); continue; }
-      c.fillStyle = '#fff'; c.beginPath(); c.arc(ex, ey, r * (scared ? 0.25 : 0.2), 0, 7); c.fill();
-      c.fillStyle = '#2a1a0e'; c.beginPath(); c.arc(ex, ey, r * (scared || hurt ? 0.06 : 0.1), 0, 7); c.fill();
-    }
-    c.restore();
+    const f = g.fish, t = this.time;
+    if (e._hp !== e.hp) { if (e._hp !== undefined) e._ht = t; e._hp = e.hp; }
+    const hit = t - (e._ht || -9), laugh = g.miss && g.state === 'aim' && !g.aiming;
+    const ex = hit < 0.7 ? 'zasah' : f && !f.dead && Math.hypot(f.x - x, f.y - y) < 6 ? 'lek' : laugh ? 'smich'
+      : (t + e.x * 1.3) % 3.4 < 0.12 ? 'mrk' : 'klid';
+    let kx = 1, ky = 1 + Math.sin(t * 2.2 + e.x) * 0.02; // dýchání
+    if (hit < 0.35) { const q = Math.sin(hit / 0.35 * Math.PI) * 0.16; kx += q; ky -= q; } // zmáčknutí po nárazu
+    if (laugh) y += Math.abs(Math.sin(t * 9)) * 0.08;
+    this.spr(c, 'bear_' + e.type + '_' + ex, x, y, a, kx, ky);
   },
 
-  // st = protažení v letu, wag = výchylka ocasu (−1 až 1), r = poloměr (jinak z dat),
+  // st = protažení v letu, fr = snímek ocasu (0, 1), big = nafouknutý čtverzubec,
   // one = jedna sardinka (po rozdělení); jinak se sardinky kreslí jako hejno tří
-  fish(c, type, x, y, a, st, wag, r, one) {
-    const f = FISH[type];
-    r = r || f.r;
-    c.save(); c.translate(x, y); c.rotate(a);
-    if (Math.cos(a) < 0) c.scale(1, -1); // břicho vždy dolů
-    if (type === 'sardinky' && !one) {
-      this.body(c, f, r, -r * 1.1, r * 1.1, st, wag); this.body(c, f, r, -r * 1.3, -r * 1.1, st, -wag); this.body(c, f, r, r * 0.9, 0, st, wag);
-    } else this.body(c, f, r, 0, 0, r > f.r ? 1 : st, wag, r > f.r);
-    c.restore();
-  },
-
-  body(c, f, r, ox, oy, st, wag, big) {
-    c.save(); c.translate(ox, oy); c.scale(st, 1 / st);
-    const lx = big ? r : r * f.lx, ly = big ? r : r * f.ly, ty = wag * r * 0.5;
-    c.fillStyle = f.col; c.strokeStyle = f.edge; c.lineWidth = 0.05;
-    c.beginPath(); c.moveTo(-lx * 0.8, 0); c.lineTo(-lx - r * 0.55, ly * 0.8 + ty); c.lineTo(-lx - r * 0.55, -ly * 0.8 + ty); c.closePath(); c.fill(); c.stroke();
-    if (f === FISH.ctverzubec) { // ostny
-      c.beginPath();
-      for (let i = 0; i < 10; i++) { const a = i * 0.628 + 0.3, k = big ? 1.3 : 1.18; c.moveTo(Math.cos(a) * lx * 0.9, Math.sin(a) * ly * 0.9); c.lineTo(Math.cos(a) * lx * k, Math.sin(a) * ly * k); }
-      c.stroke();
-    }
-    c.beginPath(); c.ellipse(0, 0, lx, ly, 0, 0, 7); c.fill(); c.stroke();
-    c.fillStyle = f.belly; c.beginPath(); c.ellipse(0, -ly * 0.33, lx * 0.78, ly * 0.55, 0, Math.PI, 0); c.fill();
-    if (f === FISH.sumec) { // vousy
-      c.beginPath(); c.moveTo(lx * 0.8, -ly * 0.2); c.quadraticCurveTo(lx * 1.3, -ly * 0.2, lx * 1.4, -ly * 0.8);
-      c.moveTo(lx * 0.7, -ly * 0.35); c.quadraticCurveTo(lx * 1.1, -ly * 0.6, lx * 1.1, -ly * 1.1); c.stroke();
-    }
-    const er = Math.min(r * 0.28, ly * 0.42);
-    c.fillStyle = '#fff'; c.beginPath(); c.arc(lx * 0.55, ly * 0.28, er, 0, 7); c.fill();
-    c.fillStyle = '#1c1c1c'; c.beginPath(); c.arc(lx * 0.55 + er * 0.3, ly * 0.28, er * 0.5, 0, 7); c.fill();
-    c.restore();
+  fish(c, type, x, y, a, st, fr, big, one) {
+    const n = 'fish_' + type + '_' + (big ? 'big' : fr), ky = Math.cos(a) < 0 ? -1 / st : 1 / st; // břicho vždy dolů
+    if (type !== 'sardinky' || one) { this.spr(c, n, x, y, a, st, ky); return; }
+    const r = FISH[type].r, ca = Math.cos(a), sa = Math.sin(a), up = ky < 0 ? -1 : 1;
+    for (const [ox, oy, f2] of [[-r * 1.1, r * 1.1, fr], [-r * 1.3, -r * 1.1, 1 - fr], [r * 0.9, 0, fr]])
+      this.spr(c, 'fish_sardinky_' + f2, x + ox * ca - oy * up * sa, y + ox * sa + oy * up * ca, a, st, ky);
   },
 
   // ---------- efekty ----------
@@ -256,7 +331,7 @@ const R = {
       } else this.puff(e.x, e.y, e.m === 'stika' ? 7 : 4, 0.3, '#fff');
     }
     else if (e.k === 'win') // body za nevystřelené ryby nad frontou
-      for (let i = 0; i < e.n; i++) this.text(SLING.x - 1.2 - i * 0.85, 1.1 + (i & 1) * 0.6, '+' + SCORE.fish, 0.5, '#ffe27a').wait = 0.3 + i * 0.25;
+      for (let i = 0; i < e.n; i++) this.text(SLING.x - 1 - i * 0.8, 1.1 + (i & 1) * 0.6, '+' + SCORE.fish, 0.5, '#ffe27a').wait = 0.3 + i * 0.25;
   },
 
   // rozpínající se kruh (k = 3) a blesk (k = 4, cíl ve vx, vy)

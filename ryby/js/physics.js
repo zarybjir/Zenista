@@ -34,7 +34,7 @@ function physAdd(P, e, x, y, a, shape, d) {
 
 function physBlock(P, mat, shape, x, y, a) {
   const m = MAT[mat], s = SHAPE[shape];
-  return physAdd(P, { kind: 'block', type: mat, w: s[0], h: s[1], hp: m.hp, max: m.hp },
+  return physAdd(P, { kind: 'block', type: mat, shape, w: s[0], h: s[1], hp: m.hp, max: m.hp },
     x, y, a * DEG, new planck.Box(s[0] / 2, s[1] / 2), m);
 }
 

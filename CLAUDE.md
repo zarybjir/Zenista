@@ -78,7 +78,7 @@ Složka `ryby/` je celá hra; Android obal ji jen zabalí. Soubory vznikají pos
 ještě neexistuje, založ ho podle tohoto rozdělení a nedávej jeho obsah jinam.
 
 - `ryby/index.html` – jeden canvas a načtení **klasických skriptů v pořadí**:
-  `lib/planck, util, data, levels, audio, input, physics, fish, game, save, render, ui, app`.
+  `lib/planck, util, data, levels, audio, input, physics, fish, game, save, atlas, render, ui, app`.
   Skripty nejsou moduly: všechno je globální (`'use strict'`, top-level `const`/`function`).
   Nový soubor = přidat `<script>` na správné místo.
 - `js/util.js` – `clamp`, `lerp`, `rand` se seedem, vektory, easing.
@@ -92,8 +92,13 @@ ještě neexistuje, založ ho podle tohoto rozdělení a nedávej jeho obsah jin
 - `js/game.js` – `class Game`: stav úrovně (`míření → let → doznívání → další ryba / výhra / prohra`),
   fronta ryb, bodování, hvězdy. Nezná canvas ani DOM, aby šla testovat v Node.
 - `js/save.js` – `Save`: uložený postup (hvězdy a nejlepší skóre podle id úrovně), odemykání úrovní.
-- `js/render.js` – kreslení na canvas: pozadí s paralaxou, bloky a trhliny, postavy, částice,
-  stopa letu, kamera (posun a zoom za letící rybou, otřes).
+- `js/render.js` – kreslení na canvas: pozadí s paralaxou (`buildBg` ho předkreslí do vrstev),
+  obrázky z atlasu (`spr`), výrazy a animace postav, částice, stopa letu, kamera a otřes.
+- `gfx/atlas.svg` + `js/atlas.js` – všechny obrázky ryb, medvědů a bloků v jednom SVG a tabulka,
+  kde který leží. **Oba soubory jsou generované, neupravuj je ručně.** Vyrábí je
+  `tools/gen_gfx.js` (`node ryby/tools/gen_gfx.js`): vzhled postav a bloků se mění tam.
+  Rozměry bere z `data.js`, takže **po změně poloměru ryby nebo medvěda, tvaru bloku nebo po
+  přidání nového typu ho pusť znovu** (hlídá to test „grafika“).
 - `js/ui.js` – menu, výběr úrovně, HUD, obrazovka výsledku. `js/app.js` – hlavní smyčka a start.
 - `js/input.js` – jednotné ovládání: dotyk, myš a gamepad se převádějí na stejné události
   (`aimStart`, `aimMove`, `release`, `ability`, `restart`, `back`). Hra nerozlišuje zdroj vstupu.
@@ -126,11 +131,12 @@ laděný na tělesa 0,1–10 m, proto se nepočítá v pixelech; na obrazovku p�
 
 - Kreslený styl: silné tmavé obrysy, plné barvy, jednoduché stínování, velké oči. Postavy musí být
   čitelné i na malém telefonu – silueta ryby a medvěda se nesmí plést s bloky.
-- Postavy a bloky jako **SVG nebo PNG ve dvojnásobném rozlišení** v `gfx/`; při startu se
-  předkreslí do offscreen canvasů. V herní smyčce jen `drawImage`, žádné parsování ani tvorba
-  gradientů za snímek.
-- Každý blok má 3 stavy poškození (celý, prasklý, těsně před rozbitím), každá postava několik
-  výrazů (klid, mrknutí, leknutí, zásah).
+- Postavy a bloky jsou vektorové (SVG) v jednom atlasu v `gfx/`; při startu se atlas i pozadí
+  předkreslí do offscreen canvasů v rozlišení displeje. V herní smyčce jen `drawImage`, žádné
+  parsování ani tvorba gradientů za snímek.
+- Každý blok má 3 stavy poškození (celý, prasklý, těsně před rozbitím), medvěd 5 výrazů
+  (klid, mrknutí, leknutí, zásah, smích), ryba 2 snímky ocasu. Obrázek je kreslený vpravo
+  hledící, počátek má ve středu fyzikálního tělesa.
 - Canvas se škáluje podle `devicePixelRatio` (nejvýš 2). Hra je **na šířku**; logická výška scény
   je pevná, šířka se přizpůsobí poměru stran (16:9 až 21:9).
 - Cíl 60 fps na běžném telefonu. Částic nejvýš několik set, s recyklací objektů.

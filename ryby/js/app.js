@@ -64,7 +64,12 @@ const App = {
       restart: () => { if (this.screen === 'play') this.restart(); },
       back: () => { if (this.screen === 'play') this.menu(); else this.screen = 'play'; },
     });
-    requestAnimationFrame(t => this.frame(t));
+    // smyčka se spustí až po načtení grafiky
+    R.load().then(() => requestAnimationFrame(t => this.frame(t)), () => {
+      const c = R.ctx;
+      c.fillStyle = '#fff'; c.font = '18px system-ui, sans-serif';
+      c.fillText('Grafiku se nepodařilo načíst.', 24, 40);
+    });
   },
 
   frame(t) {

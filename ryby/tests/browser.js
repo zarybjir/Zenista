@@ -6,7 +6,7 @@ const http = require('http'), fs = require('fs'), path = require('path');
 const { chromium } = require('playwright');
 const { ROOT } = require('./lib.js');
 const OUT = path.join(__dirname, 'out');
-const MIME = { '.html': 'text/html', '.js': 'text/javascript' };
+const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.svg': 'image/svg+xml' };
 
 const ok = (c, msg) => { if (!c) throw new Error(msg); };
 
@@ -28,7 +28,7 @@ const ok = (c, msg) => { if (!c) throw new Error(msg); };
       pg.on('pageerror', e => errs.push(name + ': ' + e.message));
       pg.on('console', m => { if (m.type() === 'error') errs.push(name + ': ' + m.text()); });
       await pg.goto(url);
-      await pg.waitForFunction('typeof App !== "undefined" && App.game');
+      await pg.waitForFunction('typeof App !== "undefined" && App.game && R.atl');
       const st = () => pg.evaluate('App.game.state');
       // bod světa → pixel
       const px = (x, y) => pg.evaluate(`({ x: (${x} - R.cam.x) * R.s, y: R.H - (${y} + VIEW.ground) * R.s })`);

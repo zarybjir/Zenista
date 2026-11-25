@@ -52,9 +52,13 @@ const UI = {
       { id: 'restart', x: W - 60, y: 12, w: 48, h: 48 },
       { id: 'menu', x: W - 116, y: 12, w: 48, h: 48 },
     ];
-    c.font = '600 20px' + this.FONT; c.fillStyle = '#1d3340'; c.textAlign = 'left';
-    c.fillText((app.li + 1) + '. ' + g.lvl.name, 16, 28);
-    c.fillText('Skóre ' + g.score, 16, 54);
+    c.font = '600 20px' + this.FONT; c.textAlign = 'left';
+    const name = (app.li + 1) + '. ' + g.lvl.name, sc = 'Skóre ' + g.score;
+    c.fillStyle = 'rgba(245,248,250,.8)'; // podklad, aby byl text čitelný i přes mraky
+    this.rr(c, 8, 10, Math.max(c.measureText(name).width, c.measureText(sc).width) + 20, 60, 10); c.fill();
+    c.fillStyle = '#1d3340';
+    c.fillText(name, 18, 28);
+    c.fillText(sc, 18, 54);
     for (const k of b) {
       c.fillStyle = 'rgba(29,51,64,.75)'; this.rr(c, k.x, k.y, k.w, k.h, 10); c.fill();
       c.fillStyle = c.strokeStyle = '#fff';

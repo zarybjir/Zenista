@@ -4,7 +4,7 @@ const { load } = require('./lib.js');
 const G = load();
 const Game = G('Game'), LEVELS = G('LEVELS'), SLING = G('SLING'), MAT = G('MAT'), SHAPE = G('SHAPE'),
   FISH = G('FISH'), BEARS = G('BEARS'), SCORE = G('SCORE'), Save = G('Save'), ABILITY = G('ABILITY'),
-  localStorage = G('localStorage');
+  localStorage = G('localStorage'), ATLAS = G('ATLAS');
 
 const tests = [];
 const test = (name, fn) => tests.push([name, fn]);
@@ -244,6 +244,22 @@ test('medvědi: výdrž roste od medvíděte po grizzlyho', () => {
   const b = BEARS;
   ok(b.medvide.hp < b.medved.hp && b.medved.hp < b.kotlik.hp && b.kotlik.hp < b.grizzly.hp, 'výdrž');
   ok(b.medvide.pts < b.medved.pts && b.medved.pts < b.kotlik.pts && b.kotlik.pts < b.grizzly.pts, 'body');
+});
+
+test('grafika: atlas má obrázek pro každou rybu, medvěda a blok v aktuální velikosti', () => {
+  const has = n => ok(ATLAS.s[n], 'v atlasu chybí ' + n + ' – spusť node ryby/tools/gen_gfx.js');
+  for (const k of Object.keys(FISH)) { has('fish_' + k + '_0'); has('fish_' + k + '_1'); }
+  has('fish_ctverzubec_big');
+  for (const k of Object.keys(BEARS)) {
+    for (const e of ['klid', 'mrk', 'lek', 'zasah', 'smich']) has('bear_' + k + '_' + e);
+    ok(Math.abs(ATLAS.s['bear_' + k + '_klid'][2] - (BEARS[k].r * 220 + 12)) < 0.2, k + ': obrázek neodpovídá poloměru v datech');
+  }
+  for (const m of Object.keys(MAT)) for (const [sh, d] of Object.entries(SHAPE)) for (let st = 0; st < 3; st++) {
+    const q = ATLAS.s['blk_' + m + '_' + sh + '_' + st];
+    has('blk_' + m + '_' + sh + '_' + st);
+    ok(Math.abs(q[2] - (d[0] * 100 + 12)) < 0.2 && Math.abs(q[3] - (d[1] * 100 + 12)) < 0.2, sh + ': obrázek neodpovídá rozměru v datech');
+  }
+  for (const q of Object.values(ATLAS.s)) ok(q[0] >= 0 && q[1] >= 0 && q[0] + q[2] <= ATLAS.w + 0.2 && q[1] + q[3] <= ATLAS.h + 0.2, 'obrázek mimo atlas');
 });
 
 // ---------- hvězdy a ukládání ----------
