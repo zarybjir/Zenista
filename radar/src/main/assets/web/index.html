@@ -97,8 +97,9 @@
 </div>
 
 <script type="module">
-const MP = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
-const MODEL = "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite";
+// MediaPipe Tasks Vision 0.10.14, bundled with the page so it works offline.
+const MP = new URL("./mp", location.href).href;
+const MODEL = MP + "/face.tflite";
 
 const LABELS = [
   "ŠÉF", "LEGENDA", "AGENT 007", "VIP", "GÉNIUS", "MISTR KÁVY",
@@ -116,7 +117,7 @@ let tracks = [], nextId = 1, running = false;
 
 async function loadDetector() {
   if (detector) return;
-  const { FaceDetector, FilesetResolver } = await import(MP + "/vision_bundle.mjs");
+  const { FaceDetector, FilesetResolver } = await import(MP + "/vision_bundle.js");
   const files = await FilesetResolver.forVisionTasks(MP + "/wasm");
   const make = delegate => FaceDetector.createFromOptions(files, {
     baseOptions: { modelAssetPath: MODEL, delegate },
@@ -277,7 +278,7 @@ $("start").addEventListener("click", async () => {
       e.message === "insecure" ? "Kamera je dostupná jen na stránce načtené přes HTTPS."
       : e.name === "NotAllowedError" ? "Přístup ke kameře nebyl povolen. Povolte ho v nastavení prohlížeče a zkuste to znovu."
       : e.name === "NotFoundError" ? "V zařízení nebyla nalezena kamera."
-      : "Detekci se nepodařilo načíst. Zkontrolujte připojení k internetu a zkuste to znovu.";
+      : "Detekci obličejů se nepodařilo spustit. Zkuste to znovu.";
     btn.disabled = false;
   }
 });

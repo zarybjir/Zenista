@@ -14,3 +14,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "Zenista"
 include(":app")
+include(":radar")

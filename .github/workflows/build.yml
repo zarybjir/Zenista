@@ -68,6 +68,11 @@ jobs:
           name: zenista-apk
           path: app/build/outputs/apk/**/*.apk
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: radar-apk
+          path: radar/build/outputs/apk/**/*.apk
+
       - name: Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2

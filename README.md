@@ -15,8 +15,11 @@ Pro aktualizace se zachováním dat nastav v Settings → Secrets and variables 
 `ZENISTA_KEYSTORE_B64`, `ZENISTA_KEYSTORE_PASSWORD`, `ZENISTA_KEY_ALIAS`, `ZENISTA_KEY_PASSWORD`
 (klidně stejný klíč jako u Stihnu to?).
 
-## Radar (žertovná webová stránka)
+## Radar (žertovná aplikace)
 
-`radar/index.html` je samostatná stránka: kamera telefonu vyhledá obličeje a každému
-přidělí náhodnou blikající nálepku. Kamera funguje jen přes HTTPS (např. GitHub Pages)
-a pro načtení detekce obličejů je potřeba připojení k internetu. Obraz se nikam neodesílá.
+Druhý modul `radar` je samostatná Android aplikace (WebView): kamera telefonu vyhledá
+obličeje a každému přidělí náhodnou blikající nálepku nebo vlastní text. Detekce obličejů
+je přibalená, aplikace běží offline a obraz nikam neodesílá.
+
+- Stránka: `radar/src/main/assets/web/index.html`
+- APK: stejný běh na GitHubu jako u Ženisty, artefakt `radar-apk`.
