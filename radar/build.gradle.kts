@@ -11,8 +11,8 @@ android {
         applicationId = "cz.zenista.radar"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
     }
 
     // Stejné podepisování jako u Ženisty: bez proměnných prostředí vznikne debug APK.

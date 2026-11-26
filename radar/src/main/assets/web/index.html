@@ -31,7 +31,7 @@
     padding-left: max(16px, env(safe-area-inset-left, 0px));
     padding-right: max(16px, env(safe-area-inset-right, 0px)); }
   .hud.top { top: 0; padding-top: calc(env(safe-area-inset-top, 0px) + 12px); }
-  .hud.bottom { bottom: 0; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); }
+  .hud.bottom { bottom: 0; flex-wrap: wrap; justify-content: center; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); }
   .chip { background: var(--panel); border: 1px solid rgba(61, 255, 154, .35);
     border-radius: 4px; padding: 6px 10px; font-size: 12px; letter-spacing: .12em;
     text-transform: uppercase; }
@@ -42,13 +42,13 @@
 
   button { font: inherit; color: var(--fg); background: var(--panel);
     border: 1px solid var(--accent); border-radius: 4px; padding: 12px 16px;
-    letter-spacing: .1em; text-transform: uppercase; font-size: 13px;
+    letter-spacing: .08em; text-transform: uppercase; font-size: 12px;
     pointer-events: auto; cursor: pointer; }
   button:active { background: rgba(61, 255, 154, .25); }
   button:focus-visible { outline: 2px solid var(--alert); outline-offset: 2px; }
 
   #intro { position: fixed; inset: 0; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 20px; text-align: center;
+    align-items: center; justify-content: safe center; gap: 16px; text-align: center; overflow-y: auto;
     padding: 24px max(24px, env(safe-area-inset-right, 0px)) 24px max(24px, env(safe-area-inset-left, 0px));
     background:
       radial-gradient(circle at 50% 42%, rgba(61, 255, 154, .14), transparent 55%),
@@ -66,6 +66,12 @@
     text-align: center; text-transform: none; letter-spacing: 0;
     -webkit-user-select: text; user-select: text; }
   .field input:focus-visible { outline: 2px solid var(--alert); outline-offset: 2px; }
+  .field select { font: inherit; font-size: 16px; color: var(--fg); background: var(--bg);
+    border: 1px solid rgba(61, 255, 154, .5); border-radius: 4px; padding: 12px;
+    text-transform: none; letter-spacing: 0; }
+  .field input[type=range] { padding: 0; border: 0; background: none; accent-color: var(--accent); }
+  .field output { color: var(--accent); }
+  .hint { font-size: 12px !important; }
   #msg { color: var(--alert); min-height: 1.5em; }
 
   @media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
@@ -81,17 +87,45 @@
     <div class="chip">Cíle: <b id="count">0</b></div>
   </div>
   <div class="hud bottom">
+    <button id="settings" type="button">Nastavení</button>
     <button id="flip" type="button">Otočit kameru</button>
-    <button id="shuffle" type="button">Nové nálepky</button>
+    <button id="shuffle" type="button">Losovat znovu</button>
   </div>
 </div>
 
 <div id="intro">
   <h1>RADAR</h1>
-  <p>Kamera vyhledá obličeje v záběru a každému přidělí náhodnou nálepku. Obraz zůstává v telefonu, nikam se neodesílá.</p>
+  <p>Kamera vyhledá obličeje v záběru a označí je náhodnou nálepkou nebo vlastním textem. Obraz zůstává v telefonu.</p>
   <label class="field" for="custom">Vlastní text nálepky (nepovinné)
     <input id="custom" type="text" maxlength="40" autocomplete="off" placeholder="Prázdné = náhodné nálepky">
   </label>
+  <label class="field" for="mode">Koho označit
+    <select id="mode">
+      <option value="all">Všechny obličeje</option>
+      <option value="random">Náhodně</option>
+      <option value="shirt">Podle barvy trička</option>
+      <option value="tap">Jen ty, na které klepnu</option>
+    </select>
+  </label>
+  <label class="field" for="chance" id="chanceRow" hidden>Šance na označení: <output id="chanceOut">50 %</output>
+    <input id="chance" type="range" min="5" max="95" step="5" value="50">
+  </label>
+  <label class="field" for="shirt" id="shirtRow" hidden>Barva trička
+    <select id="shirt">
+      <option value="cervena">Červená</option>
+      <option value="oranzova">Oranžová</option>
+      <option value="zluta">Žlutá</option>
+      <option value="zelena">Zelená</option>
+      <option value="modra">Modrá</option>
+      <option value="fialova">Fialová</option>
+      <option value="ruzova">Růžová</option>
+      <option value="bila">Bílá</option>
+      <option value="seda">Šedá</option>
+      <option value="cerna">Černá</option>
+    </select>
+  </label>
+  <p class="hint" id="shirtHint" hidden>Barva se odhaduje z oblasti pod obličejem. Radar ji u každého vypisuje, takže je vidět, co rozpoznal.</p>
+  <p class="hint" id="tapHint" hidden>Klepnutím na obličej v záběru označení zapnete nebo vypnete.</p>
   <button id="start" type="button">Spustit</button>
   <p id="msg" role="status"></p>
 </div>
@@ -139,6 +173,79 @@ async function openCamera() {
   tracks = [];
 }
 
+const SHIRT_NAMES = { cervena: "ČERVENÁ", oranzova: "ORANŽOVÁ", zluta: "ŽLUTÁ", zelena: "ZELENÁ",
+  modra: "MODRÁ", fialova: "FIALOVÁ", ruzova: "RŮŽOVÁ", bila: "BÍLÁ", seda: "ŠEDÁ", cerna: "ČERNÁ" };
+const modeSel = $("mode"), chanceIn = $("chance"), shirtSel = $("shirt");
+let mode = "all", chance = 0.5, shirtWanted = "modra";
+
+function showRows() {
+  $("chanceRow").hidden = modeSel.value !== "random";
+  $("shirtRow").hidden = $("shirtHint").hidden = modeSel.value !== "shirt";
+  $("tapHint").hidden = modeSel.value !== "tap";
+  $("chanceOut").textContent = chanceIn.value + " %";
+}
+try {
+  const saved = JSON.parse(localStorage.getItem("radarSettings") || "{}");
+  if (saved.mode) modeSel.value = saved.mode;
+  if (saved.chance) chanceIn.value = saved.chance;
+  if (saved.shirt) shirtSel.value = saved.shirt;
+} catch {}
+modeSel.addEventListener("change", showRows);
+chanceIn.addEventListener("input", showRows);
+showRows();
+
+function applySettings() {
+  mode = modeSel.value; chance = chanceIn.value / 100; shirtWanted = shirtSel.value;
+  customText = customInput.value.trim().toUpperCase();
+  for (const t of tracks) if (customText) t.label = customText; else if (!LABELS.includes(t.label)) { t.label = ""; t.label = pickLabel(); }
+  try {
+    localStorage.setItem("radarText", customInput.value.trim());
+    localStorage.setItem("radarSettings", JSON.stringify({ mode, chance: chanceIn.value, shirt: shirtWanted }));
+  } catch {}
+}
+
+function isFlagged(t) {
+  if (mode === "random") return t.roll < chance;
+  if (mode === "shirt") return t.shirt === shirtWanted;
+  if (mode === "tap") return t.tapped;
+  return true;
+}
+
+// Shirt colour: average of a patch below the face, mapped to a named colour.
+const probe = document.createElement("canvas"); probe.width = probe.height = 8;
+const pctx = probe.getContext("2d", { willReadFrequently: true });
+function classify(r, g, b) {
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), v = mx / 255, sat = mx ? (mx - mn) / mx : 0;
+  if (v < 0.22) return "cerna";
+  if (sat < 0.18) return v > 0.72 ? "bila" : v < 0.35 ? "cerna" : "seda";
+  let h = mx === r ? ((g - b) / (mx - mn)) % 6 : mx === g ? (b - r) / (mx - mn) + 2 : (r - g) / (mx - mn) + 4;
+  h = (h * 60 + 360) % 360;
+  if (h < 15 || h >= 345) return "cervena";
+  if (h < 40) return "oranzova";
+  if (h < 70) return "zluta";
+  if (h < 165) return "zelena";
+  if (h < 255) return "modra";
+  if (h < 290) return "fialova";
+  return "ruzova";
+}
+function sampleShirt(t) {
+  const vw = video.videoWidth, vh = video.videoHeight;
+  const x0 = Math.max(0, t.cx - t.w * 0.6), x1 = Math.min(vw, t.cx + t.w * 0.6);
+  const y0 = Math.min(vh, t.cy + t.h * 1.1), y1 = Math.min(vh, t.cy + t.h * 1.9);
+  if (x1 - x0 < 4 || y1 - y0 < t.h * 0.2) return; // chest is outside the picture
+  pctx.drawImage(video, x0, y0, x1 - x0, y1 - y0, 0, 0, 8, 8);
+  const d = pctx.getImageData(0, 0, 8, 8).data;
+  let r = 0, g = 0, b = 0;
+  for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; }
+  const n = d.length / 4;
+  t.votes.push(classify(r / n, g / n, b / n));
+  if (t.votes.length > 7) t.votes.shift();
+  const counts = {};
+  let best = null;
+  for (const c of t.votes) { counts[c] = (counts[c] || 0) + 1; if (!best || counts[c] > counts[best]) best = c; }
+  t.shirt = best;
+}
+
 let customText = "";
 const customInput = $("custom");
 try { customInput.value = localStorage.getItem("radarText") || ""; } catch {}
@@ -167,7 +274,8 @@ function updateTracks(boxes, now) {
       best.w += (b.w - best.w) * k; best.h += (b.h - best.h) * k;
       best.seen = now;
     } else {
-      tracks.push({ id: nextId++, ...b, label: pickLabel(), seen: now, born: now });
+      tracks.push({ id: nextId++, ...b, label: pickLabel(), seen: now, born: now,
+        roll: Math.random(), tapped: false, shirt: null, votes: [] });
     }
   }
   tracks = tracks.filter(t => now - t.seen < 700);
@@ -203,6 +311,14 @@ function draw(now) {
     const y = oy + t.cy * s - h / 2;
     if (mirror) x = cw - x - w;
 
+    t.rect = { x, y, w, h };
+    if (!isFlagged(t)) {
+      ctx.strokeStyle = "rgba(61,255,154,.55)"; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, w, h);
+      ctx.font = "11px ui-monospace, Menlo, Consolas, monospace"; ctx.fillStyle = "#3dff9a";
+      ctx.textBaseline = "middle"; ctx.textAlign = "left";
+      ctx.fillText(mode === "shirt" ? "TRIČKO: " + (SHIRT_NAMES[t.shirt] || "?") : "BEZ NÁLEZU", x, y + h + 14);
+      continue;
+    }
     const col = on ? "#ffd23d" : "#3dff9a";
     ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.shadowColor = col; ctx.shadowBlur = 12;
     const c = Math.min(w, h) * 0.22;
@@ -233,11 +349,12 @@ function draw(now) {
 
     ctx.font = "11px ui-monospace, Menlo, Consolas, monospace";
     ctx.fillStyle = "#3dff9a";
-    ctx.fillText(`CÍL #${String(t.id).padStart(2, "0")}`, x, y + h + (by > y ? 34 + bh : 16));
+    const note = mode === "shirt" ? "TRIČKO: " + (SHIRT_NAMES[t.shirt] || "?") : `CÍL #${String(t.id).padStart(2, "0")}`;
+    ctx.fillText(note, x, y + h + (by > y ? 34 + bh : 16));
   }
 }
 
-let lastTs = -1;
+let lastTs = -1, lastProbe = 0;
 function loop() {
   if (!running) return;
   const now = performance.now();
@@ -250,7 +367,8 @@ function loop() {
         return { cx: b.originX + b.width / 2, cy: b.originY + b.height / 2, w: b.width, h: b.height };
       });
       updateTracks(boxes, now);
-      $("count").textContent = tracks.length;
+      if (mode === "shirt" && now - lastProbe > 200) { lastProbe = now; tracks.forEach(sampleShirt); }
+      $("count").textContent = tracks.filter(isFlagged).length;
     } catch (e) { console.error(e); }
   }
   draw(now);
@@ -261,16 +379,15 @@ $("start").addEventListener("click", async () => {
   const btn = $("start");
   btn.disabled = true;
   try {
-    customText = customInput.value.trim().toUpperCase();
-    try { localStorage.setItem("radarText", customInput.value.trim()); } catch {}
-    $("shuffle").hidden = !!customText;
+    applySettings();
+    if (running) { $("intro").hidden = true; msg.textContent = ""; btn.disabled = false; return; }
     if (!navigator.mediaDevices?.getUserMedia) throw new Error("insecure");
     msg.textContent = "Spouští se kamera…";
     await openCamera();
     msg.textContent = "Načítá se detekce obličejů…";
     await loadDetector();
     $("intro").hidden = true; $("stage").hidden = false;
-    running = true; loop();
+    running = true; btn.disabled = false; btn.textContent = "Pokračovat"; msg.textContent = ""; loop();
     navigator.wakeLock?.request("screen").catch(() => {});
   } catch (e) {
     console.error(e);
@@ -289,9 +406,21 @@ $("flip").addEventListener("click", async () => {
 });
 
 $("shuffle").addEventListener("click", () => {
-  for (const t of tracks) t.label = "";
+  for (const t of tracks) { t.label = ""; t.roll = Math.random(); }
   for (const t of tracks) t.label = pickLabel();
 });
+
+$("settings").addEventListener("click", () => { $("intro").hidden = false; });
+
+canvas.addEventListener("pointerdown", e => {
+  if (mode !== "tap") return;
+  const hit = tracks.find(t => t.rect && e.clientX >= t.rect.x && e.clientX <= t.rect.x + t.rect.w
+    && e.clientY >= t.rect.y && e.clientY <= t.rect.y + t.rect.h);
+  if (hit) hit.tapped = !hit.tapped;
+});
+
+// Used only by the automated check (page opened with #test).
+if (location.hash === "#test") window.__radar = { updateTracks, classify, get tracks() { return tracks; } };
 </script>
 </body>
 </html>
