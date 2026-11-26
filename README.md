@@ -14,3 +14,9 @@ další verze pak nejde nainstalovat přes starou (musíš odinstalovat a postup
 Pro aktualizace se zachováním dat nastav v Settings → Secrets and variables → Actions:
 `ZENISTA_KEYSTORE_B64`, `ZENISTA_KEYSTORE_PASSWORD`, `ZENISTA_KEY_ALIAS`, `ZENISTA_KEY_PASSWORD`
 (klidně stejný klíč jako u Stihnu to?).
+
+## Radar (žertovná webová stránka)
+
+`radar/index.html` je samostatná stránka: kamera telefonu vyhledá obličeje a každému
+přidělí náhodnou blikající nálepku. Kamera funguje jen přes HTTPS (např. GitHub Pages)
+a pro načtení detekce obličejů je potřeba připojení k internetu. Obraz se nikam neodesílá.
