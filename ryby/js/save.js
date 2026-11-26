@@ -1,9 +1,11 @@
 'use strict';
 // ---------- uložený postup (localStorage) ----------
-// Formát: { v: 1, lv: { <id úrovně>: { s: hvězdy 0–3, b: nejlepší skóre } } }
+// Postup (klíč ryby): { v: 1, lv: { <id úrovně>: { s: hvězdy 0–3, b: nejlepší skóre } } }
+// Nastavení (klíč ryby-set): { snd: zvuk zapnutý }
 const Save = {
-  KEY: 'ryby',
+  KEY: 'ryby', SET: 'ryby-set',
   d: { v: 1, lv: {} },
+  opt: { snd: true },
 
   load() {
     this.d = { v: 1, lv: {} };
@@ -11,7 +13,15 @@ const Save = {
       const o = JSON.parse(localStorage.getItem(this.KEY));
       if (o && o.lv && typeof o.lv === 'object') this.d.lv = o.lv;
     } catch (e) {}
+    this.opt = { snd: true };
+    try {
+      const o = JSON.parse(localStorage.getItem(this.SET));
+      if (o && typeof o.snd === 'boolean') this.opt.snd = o.snd;
+    } catch (e) {}
   },
+
+  setOpt(k, v) { this.opt[k] = v; try { localStorage.setItem(this.SET, JSON.stringify(this.opt)); } catch (e) {} },
+  stars() { let n = 0; for (const l of LEVELS) n += this.get(l.id).s; return n; },
 
   store() { try { localStorage.setItem(this.KEY, JSON.stringify(this.d)); } catch (e) {} },
 

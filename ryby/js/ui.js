@@ -1,11 +1,12 @@
 'use strict';
 // ---------- výběr úrovně, HUD a obrazovka výsledku ----------
 // Kreslí se v CSS pixelech přes herní scénu. Tlačítka: { id, x, y, w, h, t }.
-// id: restart, next, menu, lvl<index>
+// id: restart, next, menu (výběr úrovně), title (hlavní nabídka), sound, lvl<index>
 const UI = {
   btns: [],
   t0: 0,   // čas konce úrovně; výsledek se ukáže se zpožděním, aby byl vidět poslední zásah
   sel: 0,  // dlaždice vybraná klávesnicí nebo gamepadem
+  tsel: 0, // vybraná položka hlavní nabídky
   cols: 5,
   FONT: ' system-ui, sans-serif',
 
@@ -19,8 +20,31 @@ const UI = {
 
   draw(c, app, W, H) {
     c.textBaseline = 'middle';
-    if (app.screen === 'menu') this.menu(c, W, H);
+    if (app.screen === 'title') this.title(c, W, H);
+    else if (app.screen === 'menu') this.menu(c, W, H);
     else this.play(c, app, W, H);
+  },
+
+  // ---------- hlavní nabídka ----------
+  title(c, W, H) {
+    const bw = Math.min(300, W - 48), bh = 56, x = (W - bw) / 2, y0 = H / 2 - 20;
+    const b = this.btns = [
+      { id: 'menu', x, y: y0, w: bw, h: bh, t: 'Hrát' },
+      { id: 'sound', x, y: y0 + bh + 14, w: bw, h: bh, t: Save.opt.snd ? 'Zvuk: zapnuto' : 'Zvuk: vypnuto' },
+    ];
+    c.fillStyle = 'rgba(20,35,45,.6)'; c.fillRect(0, 0, W, H);
+    c.fillStyle = '#fff'; c.textAlign = 'center';
+    c.font = '700 ' + Math.min(44, W / 12 | 0) + 'px' + this.FONT;
+    c.fillText('Ryby na medvědy', W / 2, y0 - 96);
+    this.star(c, W / 2 - 80, y0 - 44, 12, true);
+    c.fillStyle = '#fff'; c.font = '500 19px' + this.FONT;
+    c.fillText('Hvězdy ' + Save.stars() + ' / ' + LEVELS.length * 3, W / 2 + 12, y0 - 43);
+    b.forEach((k, i) => {
+      c.fillStyle = i ? '#5b7f93' : '#2f6f8f'; this.rr(c, k.x, k.y, k.w, k.h, 12); c.fill();
+      if (i === this.tsel) { c.strokeStyle = '#ffd24a'; c.lineWidth = 4; c.stroke(); }
+      c.fillStyle = '#fff'; c.font = '600 22px' + this.FONT;
+      c.fillText(k.t, k.x + k.w / 2, k.y + k.h / 2 + 1);
+    });
   },
 
   // ---------- výběr úrovně ----------
@@ -33,7 +57,12 @@ const UI = {
     c.fillStyle = 'rgba(20,35,45,.6)'; c.fillRect(0, 0, W, H);
     c.fillStyle = '#fff'; c.textAlign = 'center';
     c.font = '700 30px' + this.FONT;
-    c.fillText('Ryby na medvědy', W / 2, y0 - 46);
+    c.fillText('Výběr úrovně', W / 2, y0 - 46);
+    const k = { id: 'title', x: 12, y: 12, w: 104, h: 48 }; // zpět do hlavní nabídky
+    b.push(k);
+    c.fillStyle = 'rgba(245,248,250,.2)'; this.rr(c, k.x, k.y, k.w, k.h, 10); c.fill();
+    c.fillStyle = '#fff'; c.font = '600 19px' + this.FONT;
+    c.fillText('‹ Zpět', k.x + k.w / 2, k.y + k.h / 2 + 1);
     for (let i = 0; i < n; i++) {
       const x = x0 + (i % cols) * (T + G), y = y0 + (i / cols | 0) * (T + G), open = Save.open(i), r = Save.get(LEVELS[i].id);
       if (open) b.push({ id: 'lvl' + i, x, y, w: T, h: T });

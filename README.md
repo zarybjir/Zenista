@@ -37,6 +37,6 @@ medvědi se lekají letící ryby a po výstřelu vedle se smějí.
 - Ovládání: tahem od prutu zamířit a napnout, puštěním vystřelit. Tah jinde posouvá pohled,
   kolečko myši nebo dva prsty mění přiblížení.
   Klávesa R nebo tlačítko vpravo nahoře úroveň spustí znovu, Escape nebo tlačítko se třemi čarami
-  otevře výběr úrovně. Gamepad: levá páčka míří, A střílí a spouští schopnost, Y restart, B výběr úrovně.
+  otevře výběr úrovně, odtud vede tlačítko Zpět do hlavní nabídky (Hrát, zapnutí a vypnutí zvuku). Gamepad: levá páčka míří, A střílí a spouští schopnost, Y restart, B výběr úrovně.
 - Testy: `node ryby/tests/run.js` (logika) a `node ryby/tests/browser.js` (prohlížeč, Playwright).
 - Pokyny pro vývoj a plán dalších kroků jsou v `CLAUDE.md`.

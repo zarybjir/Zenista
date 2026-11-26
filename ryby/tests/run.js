@@ -309,6 +309,18 @@ test('ukládání: poškozená a starší data hru neshodí', () => {
   localStorage.removeItem(Save.KEY); Save.load();
 });
 
+test('nastavení: zvuk se ukládá zvlášť a přežije poškozená data', () => {
+  localStorage.removeItem(Save.SET); Save.load();
+  ok(Save.opt.snd === true, 'výchozí zvuk má být zapnutý');
+  Save.setOpt('snd', false); Save.load();
+  ok(Save.opt.snd === false, 'vypnutý zvuk se neuložil');
+  for (const raw of ['{', 'null', '{"snd":"x"}']) { localStorage.setItem(Save.SET, raw); Save.load(); ok(Save.opt.snd === true, raw); }
+  localStorage.removeItem(Save.SET); Save.load();
+  Save.put('led-1', 2, 100); Save.put('drevo-1', 3, 100);
+  ok(Save.stars() === 5, 'součet hvězd');
+  localStorage.removeItem(Save.KEY); Save.load();
+});
+
 // ---------- běh ----------
 const filter = process.argv[2];
 let fail = 0, n = 0;

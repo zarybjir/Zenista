@@ -102,7 +102,8 @@ ještě neexistuje, založ ho podle tohoto rozdělení a nedávej jeho obsah jin
   `tools/gen_gfx.js` (`node ryby/tools/gen_gfx.js`): vzhled postav a bloků se mění tam.
   Rozměry bere z `data.js`, takže **po změně poloměru ryby nebo medvěda, tvaru bloku nebo po
   přidání nového typu ho pusť znovu** (hlídá to test „grafika“).
-- `js/ui.js` – menu, výběr úrovně, HUD, obrazovka výsledku. `js/app.js` – hlavní smyčka a start.
+- `js/ui.js` – hlavní nabídka, výběr úrovně, HUD, obrazovka výsledku. `js/app.js` – hlavní smyčka,
+  obrazovky (`App.screen`: `title` → `menu` → `play`, zpět vede `App.back()`) a start.
 - `js/input.js` – jednotné ovládání: dotyk, myš a gamepad se převádějí na stejné události
   (`aimStart`, `aimMove`, `release`, `ability`, `restart`, `back`). Hra nerozlišuje zdroj vstupu.
 - `js/audio.js` – `Sfx` (WebAudio); zvuk se odemyká prvním dotykem.

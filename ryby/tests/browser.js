@@ -113,9 +113,26 @@ const ok = (c, msg) => { if (!c) throw new Error(msg); };
         ok(await pg.evaluate('App.screen') === 'play' && await pg.evaluate('App.li') === 0, 'dlaždice nespustila úroveň');
         await pg.keyboard.press('Escape');
         ok(await pg.evaluate('App.screen') === 'menu', 'Escape nevede do výběru');
+        // zpět do hlavní nabídky tlačítkem, zvuk, zase do výběru
+        await pg.waitForTimeout(60);
+        const z = await btn('title');
+        ok(z, 've výběru úrovně chybí tlačítko Zpět');
+        await pg.mouse.click(z.x, z.y);
+        ok(await pg.evaluate('App.screen') === 'title', 'Zpět nevede do hlavní nabídky');
+        await pg.waitForTimeout(60);
+        await pg.screenshot({ path: path.join(OUT, name + '-8b-nabidka.png') });
+        const sn = await btn('sound');
+        await pg.mouse.click(sn.x, sn.y);
+        ok(await pg.evaluate('Save.opt.snd') === false && await pg.evaluate('Sfx.on') === false, 'zvuk se nevypnul');
+        await pg.mouse.click(sn.x, sn.y);
+        ok(await pg.evaluate('Sfx.on') === true, 'zvuk se nezapnul');
+        ok(await pg.evaluate('window.rybyBack()') === false, 'Zpět v hlavní nabídce má pustit aplikaci do pozadí');
+        await pg.keyboard.press('Enter');
+        ok(await pg.evaluate('App.screen') === 'menu', 'Hrát nevede do výběru úrovně');
+        ok(await pg.evaluate('window.rybyBack()') === true && await pg.evaluate('App.screen') === 'title', 'Zpět z výběru');
         await pg.reload();
         await pg.waitForFunction('typeof App !== "undefined" && App.game');
-        ok(await pg.evaluate('App.screen') === 'menu' && await pg.evaluate('Save.get("led-1").s') >= 1, 'postup po novém načtení chybí');
+        ok(await pg.evaluate('App.screen') === 'title' && await pg.evaluate('Save.get("led-1").s') >= 1, 'postup po novém načtení chybí');
         await pg.evaluate('Save.open = () => true'); // další kontroly potřebují všechny úrovně
       }
 
